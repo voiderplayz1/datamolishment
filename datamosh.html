@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DATAMOSH.EXE</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;700&family=Bebas+Neue&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
+  <style>
+    :root {
+      --bg: #080808;
+      --bg2: #111;
+      --bg3: #1a1a1a;
+      --red: #ff2020;
+      --green: #00ff6a;
+      --cyan: #00e5ff;
+      --amber: #ffb300;
+      --text: #d4d4d4;
+      --dim: #555;
+      --border: #2a2a2a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'IBM Plex Mono', monospace; overflow: hidden; }
+    #root { height: 100%; }
+
+    /* Scanline overlay */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.15) 2px, rgba(0,0,0,.15) 4px);
+      pointer-events: none; z-index: 9999;
+    }
+
+    /* Glitch animation */
+    @keyframes glitch1 {
+      0%,100% { clip-path: inset(0 0 95% 0); transform: translate(-2px,0); }
+      20% { clip-path: inset(30% 0 50% 0); transform: translate(2px,0); }
+      40% { clip-path: inset(60% 0 20% 0); transform: translate(-1px,0); }
+      60% { clip-path: inset(80% 0 5% 0); transform: translate(3px,0); }
+      80% { clip-path: inset(10% 0 80% 0); transform: translate(-2px,0); }
+    }
+    @keyframes glitch2 {
+      0%,100% { clip-path: inset(0 0 95% 0); transform: translate(2px,0); color: var(--cyan); }
+      20% { clip-path: inset(50% 0 30% 0); transform: translate(-2px,0); }
+      40% { clip-path: inset(20% 0 60% 0); transform: translate(1px,0); }
+      60% { clip-path: inset(5% 0 80% 0); transform: translate(-3px,0); }
+      80% { clip-path: inset(80% 0 10% 0); transform: translate(2px,0); }
+    }
+    @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:.4 } }
+    @keyframes blink { 0%,100% { opacity:1 } 49% { opacity:1 } 50% { opacity:0 } 99% { opacity:0 } }
+    @keyframes progress-stripe {
+      0% { background-position: 0 0; }
+      100% { background-position: 40px 0; }
+    }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(4px) } to { opacity:1; transform:translateY(0) } }
+
+    .app {
+      display: grid;
+      grid-template-rows: 48px 1fr 220px;
+      height: 100vh;
+    }
+
+    /* HEADER */
+    .header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 16px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--red);
+      position: relative;
+    }
+    .logo {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 28px;
+      letter-spacing: 4px;
+      color: #fff;
+      position: relative;
+    }
+    .logo::before, .logo::after {
+      content: attr(data-text);
+      position: absolute; top: 0; left: 0;
+      color: var(--red);
+    }
+    .logo::before { animation: glitch1 3.5s infinite steps(1); }
+    .logo::after { animation: glitch2 3.5s infinite steps(1); }
+    .header-tag {
+      font-size: 10px; color: var(--dim);
+      letter-spacing: 2px; text-transform: uppercase;
+    }
+    .status-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      display: inline-block; margin-right: 6px;
+    }
+    .status-dot.active { background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse 2s infinite; }
+    .status-dot.error { background: var(--red); box-shadow: 0 0 8px var(--red); }
+    .status-dot.idle { background: var(--dim); }
+
+    /* MAIN AREA */
+    .main {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      overflow: hidden;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* VIDEO AREA */
+    .video-area {
+      position: relative;
+      background: #000;
+      display: flex; align-items: center; justify-content: center;
+      border-right: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .video-area video {
+      max-width: 100%; max-height: 100%;
+      display: block;
+    }
+    .upload-zone {
+      width: 100%; height: 100%;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      cursor: pointer;
+      border: 2px dashed var(--border);
+      transition: border-color .2s;
+      gap: 12px;
+    }
+    .upload-zone:hover, .upload-zone.drag-over {
+      border-color: var(--red);
+    }
+    .upload-icon {
+      font-size: 48px; opacity: .3;
+    }
+    .upload-label {
+      font-size: 11px; letter-spacing: 3px; color: var(--dim); text-transform: uppercase;
+    }
+    .upload-sub {
+      font-size: 10px; color: #333;
+    }
+    .file-input { display: none; }
+
+    /* VIDEO OVERLAYS */
+    .timecode {
+      position: absolute; bottom: 12px; left: 12px;
+      font-size: 12px; letter-spacing: 2px;
+      background: rgba(0,0,0,.7);
+      padding: 4px 8px;
+      color: var(--green);
+      border: 1px solid var(--green);
+    }
+    .video-info {
+      position: absolute; top: 12px; right: 12px;
+      font-size: 9px; color: var(--dim);
+      background: rgba(0,0,0,.7);
+      padding: 4px 8px;
+      letter-spacing: 1px;
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      display: flex; flex-direction: column;
+      background: var(--bg2);
+      overflow-y: auto;
+    }
+    .panel {
+      border-bottom: 1px solid var(--border);
+      padding: 14px;
+    }
+    .panel-title {
+      font-size: 9px; letter-spacing: 3px; text-transform: uppercase;
+      color: var(--dim); margin-bottom: 12px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .panel-title::before {
+      content: '▶'; font-size: 7px; color: var(--red);
+    }
+
+    .marker-row {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+    }
+    .marker-label {
+      font-size: 9px; letter-spacing: 2px; color: var(--dim); width: 28px; text-transform: uppercase;
+    }
+    .marker-value {
+      flex: 1; font-size: 13px; color: var(--cyan);
+      background: var(--bg3); border: 1px solid var(--border);
+      padding: 6px 8px; letter-spacing: 1px;
+      font-family: 'Share Tech Mono', monospace;
+    }
+    .marker-btn {
+      font-size: 9px; letter-spacing: 1px;
+      padding: 6px 10px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--dim); cursor: pointer;
+      font-family: 'IBM Plex Mono', monospace;
+      text-transform: uppercase;
+      transition: all .15s;
+    }
+    .marker-btn:hover {
+      border-color: var(--cyan); color: var(--cyan);
+    }
+    .marker-btn.active {
+      border-color: var(--cyan); color: var(--cyan);
+      background: rgba(0,229,255,.08);
+    }
+
+    .range-display {
+      font-size: 10px; color: var(--amber);
+      padding: 8px; background: var(--bg3);
+      border: 1px solid rgba(255,179,0,.2);
+      margin-top: 4px;
+      letter-spacing: 1px;
+    }
+
+    /* MOSH OPTIONS */
+    .mosh-option {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px; cursor: pointer;
+      border: 1px solid var(--border);
+      margin-bottom: 6px;
+      transition: all .15s;
+    }
+    .mosh-option:hover { border-color: var(--red); }
+    .mosh-option.selected { border-color: var(--red); background: rgba(255,32,32,.06); }
+    .mosh-radio {
+      width: 10px; height: 10px;
+      border: 1px solid var(--dim);
+      position: relative;
+    }
+    .mosh-option.selected .mosh-radio {
+      border-color: var(--red);
+    }
+    .mosh-option.selected .mosh-radio::after {
+      content: ''; position: absolute;
+      inset: 2px; background: var(--red);
+    }
+    .mosh-option-text { font-size: 10px; letter-spacing: 1px; }
+    .mosh-option-sub { font-size: 9px; color: var(--dim); margin-top: 2px; }
+
+    /* PROCESS BUTTON */
+    .process-btn {
+      width: 100%; padding: 14px;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 20px; letter-spacing: 4px;
+      background: var(--red);
+      color: #fff; border: none; cursor: pointer;
+      position: relative; overflow: hidden;
+      transition: all .15s;
+    }
+    .process-btn:hover:not(:disabled) {
+      background: #ff4040;
+      box-shadow: 0 0 20px rgba(255,32,32,.4);
+    }
+    .process-btn:disabled {
+      background: var(--bg3); color: var(--dim);
+      cursor: not-allowed;
+    }
+    .process-btn.loading::after {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background: repeating-linear-gradient(
+        -45deg,
+        rgba(255,255,255,.05) 0, rgba(255,255,255,.05) 10px,
+        transparent 10px, transparent 20px
+      );
+      background-size: 40px 40px;
+      animation: progress-stripe .6s linear infinite;
+    }
+
+    /* PROGRESS */
+    .progress-bar-track {
+      height: 4px; background: var(--bg3); margin: 10px 0;
+      position: relative; overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--red), var(--amber));
+      transition: width .3s;
+      box-shadow: 0 0 8px var(--red);
+    }
+    .progress-label {
+      font-size: 9px; letter-spacing: 2px; color: var(--dim); text-transform: uppercase;
+    }
+    .log-area {
+      font-size: 9px; color: var(--dim);
+      max-height: 80px; overflow-y: auto;
+      line-height: 1.6;
+    }
+    .log-line { color: var(--green); }
+    .log-line.warn { color: var(--amber); }
+    .log-line.err { color: var(--red); }
+
+    .download-btn {
+      width: 100%; padding: 12px;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 18px; letter-spacing: 3px;
+      background: transparent;
+      color: var(--green);
+      border: 1px solid var(--green);
+      cursor: pointer;
+      transition: all .2s;
+      animation: fadeIn .5s;
+    }
+    .download-btn:hover {
+      background: var(--green); color: #000;
+      box-shadow: 0 0 20px rgba(0,255,106,.3);
+    }
+
+    /* TIMELINE */
+    .timeline-area {
+      background: var(--bg);
+      display: flex; flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+    .timeline-toolbar {
+      display: flex; align-items: center; gap: 16px;
+      padding: 6px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg2);
+      flex-shrink: 0;
+    }
+    .tl-tool-label { font-size: 9px; letter-spacing: 2px; color: var(--dim); text-transform: uppercase; }
+    .zoom-slider {
+      -webkit-appearance: none;
+      width: 120px; height: 4px;
+      background: var(--border); outline: none;
+      cursor: pointer;
+    }
+    .zoom-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px; height: 12px;
+      background: var(--red);
+      cursor: pointer;
+    }
+    .zoom-value {
+      font-size: 10px; color: var(--red); min-width: 32px;
+      letter-spacing: 1px;
+    }
+    .tl-separator { width: 1px; height: 20px; background: var(--border); }
+
+    .transport-btn {
+      font-size: 10px; padding: 4px 10px;
+      background: transparent; border: 1px solid var(--border);
+      color: var(--dim); cursor: pointer;
+      font-family: 'IBM Plex Mono', monospace;
+      letter-spacing: 1px;
+      transition: all .1s;
+    }
+    .transport-btn:hover { border-color: var(--text); color: var(--text); }
+    .transport-btn.play { border-color: var(--green); color: var(--green); }
+
+    .timeline-scroll {
+      flex: 1; overflow-x: auto; overflow-y: hidden;
+      position: relative;
+    }
+    .timeline-scroll::-webkit-scrollbar { height: 4px; }
+    .timeline-scroll::-webkit-scrollbar-track { background: var(--bg2); }
+    .timeline-scroll::-webkit-scrollbar-thumb { background: var(--border); }
+
+    .timeline-inner {
+      position: relative;
+      height: 100%;
+      min-width: 100%;
+    }
+
+    /* RULER */
+    .ruler {
+      height: 22px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    /* FILMSTRIP */
+    .filmstrip-track {
+      height: 60px;
+      position: relative;
+      background: #000;
+      cursor: crosshair;
+      border-bottom: 1px solid var(--border);
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    /* WAVEFORM placeholder */
+    .waveform-track {
+      height: 30px;
+      position: relative;
+      background: var(--bg2);
+      overflow: hidden;
+    }
+
+    .playhead {
+      position: absolute; top: 0; bottom: 0;
+      width: 2px;
+      background: var(--red);
+      z-index: 10;
+      pointer-events: none;
+    }
+    .playhead::before {
+      content: '';
+      position: absolute; top: -1px; left: -5px;
+      border: 6px solid transparent;
+      border-top-color: var(--red);
+    }
+
+    .in-marker, .out-marker {
+      position: absolute; top: 0; bottom: 0;
+      width: 3px;
+      z-index: 8;
+      cursor: ew-resize;
+    }
+    .in-marker {
+      background: var(--cyan);
+    }
+    .out-marker {
+      background: var(--amber);
+    }
+    .in-marker::before {
+      content: 'IN';
+      position: absolute; top: 2px; left: 4px;
+      font-size: 8px; letter-spacing: 1px;
+      color: var(--cyan);
+    }
+    .out-marker::before {
+      content: 'OUT';
+      position: absolute; top: 2px; left: 4px;
+      font-size: 8px; letter-spacing: 1px;
+      color: var(--amber);
+    }
+
+    .mosh-region {
+      position: absolute; top: 0; bottom: 0;
+      background: rgba(255,32,32,.08);
+      border-left: 1px dashed rgba(0,229,255,.3);
+      border-right: 1px dashed rgba(255,179,0,.3);
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .no-video-tl {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; letter-spacing: 3px; color: var(--dim); text-transform: uppercase;
+    }
+
+    /* Misc */
+    .ffmpeg-not-ready {
+      font-size: 10px; color: var(--amber); padding: 8px;
+      border: 1px solid rgba(255,179,0,.2); margin-bottom: 8px;
+      letter-spacing: 1px; line-height: 1.5;
+    }
+    .kbd {
+      display: inline-block; padding: 1px 5px;
+      border: 1px solid var(--dim); font-size: 9px;
+      color: var(--dim);
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+/* ─── HELPERS ──────────────────────────────────────────────── */
+function formatTime(s) {
+  if (!isFinite(s)) return '00:00.000';
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${String(m).padStart(2,'0')}:${sec.toFixed(3).padStart(6,'0')}`;
+}
+
+function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+/* ─── I-FRAME STRIPPER (core datamosh logic) ────────────────── */
+function stripIFrames(buffer, mode = 'all') {
+  const bytes = new Uint8Array(buffer);
+  let iFrameCount = 0;
+  let stripped = 0;
+
+  for (let i = 0; i < bytes.length - 5; i++) {
+    // MPEG4 VOP start code: 00 00 01 B6
+    if (bytes[i]===0x00 && bytes[i+1]===0x00 && bytes[i+2]===0x01 && bytes[i+3]===0xB6) {
+      const vopType = (bytes[i+4] >> 6) & 0x03;
+      if (vopType === 0) { // I-frame (intra-coded)
+        iFrameCount++;
+        const shouldStrip = mode === 'all' || (mode === 'keep_first' ? iFrameCount > 1 : false);
+        if (shouldStrip) {
+          // Rewrite as P-frame by setting top 2 bits to 01
+          bytes[i+4] = (bytes[i+4] & 0x3F) | 0x40;
+          stripped++;
+        }
+      }
+    }
+  }
+
+  console.log(`[datamosh] Found ${iFrameCount} I-frames, stripped ${stripped}`);
+  return bytes.buffer;
+}
+
+/* ─── RULER COMPONENT ───────────────────────────────────────── */
+function Ruler({ duration, pixelsPerSecond, scrollLeft }) {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !duration) return;
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0, 0, W, H);
+
+    // Determine tick interval
+    let interval = 1;
+    if (pixelsPerSecond > 200) interval = 0.1;
+    else if (pixelsPerSecond > 80) interval = 0.5;
+    else if (pixelsPerSecond < 10) interval = 10;
+    else if (pixelsPerSecond < 25) interval = 5;
+
+    ctx.font = '9px IBM Plex Mono';
+    ctx.fillStyle = '#444';
+
+    const startSec = scrollLeft / pixelsPerSecond;
+    const endSec = startSec + W / pixelsPerSecond;
+
+    for (let t = Math.floor(startSec / interval) * interval; t <= endSec + interval; t += interval) {
+      const x = t * pixelsPerSecond - scrollLeft;
+      if (x < -20 || x > W + 20) continue;
+
+      const isMajor = Math.abs(t % (interval * 5)) < 0.001 || interval >= 1;
+      const tickH = isMajor ? 10 : 5;
+
+      ctx.strokeStyle = isMajor ? '#333' : '#222';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, H);
+      ctx.lineTo(x, H - tickH);
+      ctx.stroke();
+
+      if (isMajor) {
+        ctx.fillStyle = '#555';
+        ctx.fillText(formatTime(t), x + 2, H - 12);
+      }
+    }
+  }, [duration, pixelsPerSecond, scrollLeft]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={window.innerWidth - 300}
+      height={22}
+      className="ruler"
+      style={{ width: '100%', height: 22, display: 'block' }}
+    />
+  );
+}
+
+/* ─── FILMSTRIP COMPONENT ───────────────────────────────────── */
+function Filmstrip({ videoSrc, duration, pixelsPerSecond, width }) {
+  const canvasRef = useRef(null);
+  const framesRef = useRef({});
+  const videoRef = useRef(null);
+
+  const frameInterval = useMemo(() => {
+    if (pixelsPerSecond > 200) return 0.1;
+    if (pixelsPerSecond > 80) return 0.25;
+    if (pixelsPerSecond > 30) return 0.5;
+    return 1;
+  }, [pixelsPerSecond]);
+
+  const THUMB_W = useMemo(() => Math.max(20, frameInterval * pixelsPerSecond), [frameInterval, pixelsPerSecond]);
+  const THUMB_H = 60;
+
+  useEffect(() => {
+    if (!videoSrc || !duration) return;
+    framesRef.current = {};
+
+    const vid = document.createElement('video');
+    vid.src = videoSrc;
+    vid.muted = true;
+    vid.crossOrigin = 'anonymous';
+    videoRef.current = vid;
+
+    const hiddenCanvas = document.createElement('canvas');
+    hiddenCanvas.width = THUMB_W;
+    hiddenCanvas.height = THUMB_H;
+    const hCtx = hiddenCanvas.getContext('2d');
+
+    const totalFrames = Math.ceil(duration / frameInterval);
+    let frameIndex = 0;
+
+    const captureNext = () => {
+      if (frameIndex > totalFrames || !videoRef.current) return;
+      const t = frameIndex * frameInterval;
+      vid.currentTime = t;
+    };
+
+    vid.addEventListener('seeked', () => {
+      hCtx.drawImage(vid, 0, 0, THUMB_W, THUMB_H);
+      const key = (frameIndex * frameInterval).toFixed(3);
+      hiddenCanvas.toBlob(blob => {
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          framesRef.current[key] = url;
+          drawFilmstrip();
+        }
+      }, 'image/jpeg', 0.6);
+      frameIndex++;
+      setTimeout(captureNext, 10);
+    });
+
+    vid.load();
+    captureNext();
+
+    return () => {
+      Object.values(framesRef.current).forEach(url => URL.revokeObjectURL(url));
+      videoRef.current = null;
+    };
+  }, [videoSrc, duration, frameInterval, THUMB_W]);
+
+  const drawFilmstrip = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !duration) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const frames = framesRef.current;
+    const keys = Object.keys(frames).sort((a,b) => parseFloat(a)-parseFloat(b));
+
+    keys.forEach(key => {
+      const t = parseFloat(key);
+      const x = t * pixelsPerSecond;
+      const img = new Image();
+      img.onload = () => {
+        ctx.drawImage(img, x, 0, THUMB_W, THUMB_H);
+        // Frame border
+        ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, 0, THUMB_W, THUMB_H);
+      };
+      img.src = frames[key];
+    });
+  }, [duration, pixelsPerSecond, THUMB_W]);
+
+  useEffect(() => { drawFilmstrip(); }, [drawFilmstrip]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={Math.max(width, duration * pixelsPerSecond || 800)}
+      height={THUMB_H}
+      style={{ display: 'block', height: THUMB_H }}
+    />
+  );
+}
+
+/* ─── TIMELINE COMPONENT ────────────────────────────────────── */
+function Timeline({ videoRef, videoSrc, duration, currentTime, inPoint, outPoint, setInPoint, setOutPoint, onSeek }) {
+  const [zoom, setZoom] = useState(1);
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const scrollRef = useRef(null);
+  const dragging = useRef(null); // 'playhead' | 'in' | 'out'
+  const containerWidth = useRef(800);
+
+  const pixelsPerSecond = useMemo(() => {
+    const baseW = Math.max(600, window.innerWidth - 300);
+    return (baseW * zoom) / Math.max(1, duration || 1);
+  }, [zoom, duration]);
+
+  const totalWidth = useMemo(() => Math.max(600, pixelsPerSecond * (duration || 1)), [pixelsPerSecond, duration]);
+
+  const timeToX = useCallback((t) => t * pixelsPerSecond, [pixelsPerSecond]);
+  const xToTime = useCallback((x) => clamp(x / pixelsPerSecond, 0, duration || 0), [pixelsPerSecond, duration]);
+
+  const getEventX = (e) => {
+    const rect = scrollRef.current.getBoundingClientRect();
+    return e.clientX - rect.left + scrollRef.current.scrollLeft;
+  };
+
+  const handleMouseDown = (e) => {
+    if (!duration) return;
+    const x = getEventX(e);
+    const t = xToTime(x);
+    const playX = timeToX(currentTime);
+    const inX = timeToX(inPoint);
+    const outX = timeToX(outPoint);
+
+    const HANDLE_THRESH = 8;
+    if (Math.abs(x - inX) < HANDLE_THRESH) {
+      dragging.current = 'in';
+    } else if (Math.abs(x - outX) < HANDLE_THRESH) {
+      dragging.current = 'out';
+    } else if (Math.abs(x - playX) < HANDLE_THRESH) {
+      dragging.current = 'playhead';
+    } else {
+      dragging.current = 'playhead';
+      onSeek(t);
+    }
+    e.preventDefault();
+  };
+
+  const handleMouseMove = useCallback((e) => {
+    if (!dragging.current || !scrollRef.current) return;
+    const rect = scrollRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left + scrollRef.current.scrollLeft;
+    const t = xToTime(x);
+
+    if (dragging.current === 'playhead') onSeek(t);
+    else if (dragging.current === 'in') setInPoint(clamp(t, 0, outPoint - 0.05));
+    else if (dragging.current === 'out') setOutPoint(clamp(t, inPoint + 0.05, duration));
+  }, [xToTime, onSeek, inPoint, outPoint, duration, setInPoint, setOutPoint]);
+
+  const handleMouseUp = useCallback(() => { dragging.current = null; }, []);
+
+  useEffect(() => {
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [handleMouseMove, handleMouseUp]);
+
+  const playX = timeToX(currentTime);
+  const inX = timeToX(inPoint);
+  const outX = timeToX(outPoint);
+
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  const togglePlay = () => {
+    if (!videoRef.current) return;
+    if (videoRef.current.paused) { videoRef.current.play(); setIsPlaying(true); }
+    else { videoRef.current.pause(); setIsPlaying(false); }
+  };
+
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    const onPause = () => setIsPlaying(false);
+    const onPlay = () => setIsPlaying(true);
+    v.addEventListener('pause', onPause);
+    v.addEventListener('play', onPlay);
+    return () => { v.removeEventListener('pause', onPause); v.removeEventListener('play', onPlay); };
+  }, [videoRef]);
+
+  return (
+    <div className="timeline-area">
+      <div className="timeline-toolbar">
+        <span className="tl-tool-label">ZOOM</span>
+        <input
+          type="range" className="zoom-slider"
+          min="1" max="20" step="0.5" value={zoom}
+          onChange={e => setZoom(parseFloat(e.target.value))}
+        />
+        <span className="zoom-value">{zoom.toFixed(1)}×</span>
+        <div className="tl-separator"/>
+        <button className={`transport-btn ${isPlaying ? 'play' : ''}`} onClick={togglePlay}>
+          {isPlaying ? '⏸ PAUSE' : '▶ PLAY'}
+        </button>
+        <button className="transport-btn" onClick={() => { onSeek(0); if(videoRef.current) videoRef.current.pause(); setIsPlaying(false); }}>
+          ⏮ RESET
+        </button>
+        <div className="tl-separator"/>
+        <span style={{fontSize:10, color:'var(--dim)', letterSpacing:1}}>
+          <span className="kbd">DRAG</span> PLAYHEAD &nbsp;
+          <span className="kbd">GRAB</span> IN/OUT HANDLES
+        </span>
+        {duration > 0 && (
+          <span style={{fontSize:10, color:'var(--dim)', marginLeft:'auto', letterSpacing:1}}>
+            {formatTime(currentTime)} / {formatTime(duration)}
+          </span>
+        )}
+      </div>
+
+      <div
+        className="timeline-scroll"
+        ref={scrollRef}
+        onScroll={e => setScrollLeft(e.target.scrollLeft)}
+        onMouseDown={handleMouseDown}
+        style={{ cursor: dragging.current ? 'grabbing' : 'crosshair' }}
+      >
+        {!duration && <div className="no-video-tl">LOAD A VIDEO TO BEGIN</div>}
+
+        <div className="timeline-inner" style={{ width: totalWidth }}>
+          {/* Ruler */}
+          <div style={{ height: 22, position: 'relative', background: 'var(--bg2)', borderBottom: '1px solid var(--border)' }}>
+            {duration > 0 && Array.from({ length: Math.ceil(duration) + 1 }, (_, i) => {
+              const interval = pixelsPerSecond > 200 ? 0.1 : pixelsPerSecond > 80 ? 0.5 : pixelsPerSecond > 25 ? 1 : 5;
+              return null; // Ruler drawn below via canvas
+            })}
+            {/* Inline ruler ticks */}
+            {duration > 0 && (() => {
+              const ticks = [];
+              let interval = 1;
+              if (pixelsPerSecond > 200) interval = 0.1;
+              else if (pixelsPerSecond > 80) interval = 0.5;
+              else if (pixelsPerSecond < 15) interval = 5;
+              const count = Math.ceil(duration / interval) + 1;
+              for (let i = 0; i < count; i++) {
+                const t = i * interval;
+                const x = t * pixelsPerSecond;
+                const isMajor = i % 5 === 0 || interval >= 1;
+                ticks.push(
+                  <div key={i} style={{
+                    position: 'absolute', left: x, top: 0,
+                    width: 1, height: isMajor ? 12 : 6,
+                    background: isMajor ? '#333' : '#222',
+                    bottom: 0, margin: 'auto 0',
+                  }}/>
+                );
+                if (isMajor) {
+                  ticks.push(
+                    <div key={`l${i}`} style={{
+                      position: 'absolute', left: x + 2, top: 2,
+                      fontSize: 8, color: '#555', letterSpacing: 1,
+                      fontFamily: 'IBM Plex Mono', whiteSpace: 'nowrap',
+                    }}>{formatTime(t)}</div>
+                  );
+                }
+              }
+              return ticks;
+            })()}
+          </div>
+
+          {/* Filmstrip track */}
+          <div className="filmstrip-track" style={{ width: totalWidth }}>
+            {videoSrc && duration > 0 && (
+              <Filmstrip
+                videoSrc={videoSrc}
+                duration={duration}
+                pixelsPerSecond={pixelsPerSecond}
+                width={totalWidth}
+              />
+            )}
+
+            {/* Mosh region highlight */}
+            {duration > 0 && (
+              <div className="mosh-region" style={{
+                left: inX, width: Math.max(0, outX - inX)
+              }}/>
+            )}
+
+            {/* In marker */}
+            {duration > 0 && (
+              <div className="in-marker" style={{ left: inX, cursor: 'ew-resize' }} />
+            )}
+
+            {/* Out marker */}
+            {duration > 0 && (
+              <div className="out-marker" style={{ left: outX, cursor: 'ew-resize' }} />
+            )}
+
+            {/* Playhead */}
+            {duration > 0 && (
+              <div className="playhead" style={{ left: playX }} />
+            )}
+          </div>
+
+          {/* Waveform track */}
+          <div className="waveform-track" style={{ width: totalWidth }}>
+            {duration > 0 && (
+              <>
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  display: 'flex', alignItems: 'center', overflow: 'hidden',
+                }}>
+                  {/* Fake waveform bars */}
+                  {Array.from({ length: Math.floor(totalWidth / 3) }, (_, i) => (
+                    <div key={i} style={{
+                      width: 1, flexShrink: 0, marginRight: 2,
+                      height: `${Math.random() * 80 + 10}%`,
+                      background: 'rgba(0,229,255,0.25)',
+                    }}/>
+                  ))}
+                </div>
+                <div style={{ position: 'absolute', left: 4, top: 2, fontSize: 8, color: '#333', letterSpacing: 2 }}>AUDIO</div>
+
+                {/* Mosh region on waveform */}
+                <div style={{
+                  position: 'absolute', top: 0, bottom: 0,
+                  left: inX, width: Math.max(0, outX - inX),
+                  background: 'rgba(255,32,32,.12)',
+                  pointerEvents: 'none', zIndex: 5
+                }}/>
+
+                {/* Playhead on waveform */}
+                <div style={{
+                  position: 'absolute', top: 0, bottom: 0, left: playX,
+                  width: 2, background: 'var(--red)', pointerEvents: 'none', zIndex: 10
+                }}/>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── MAIN APP ──────────────────────────────────────────────── */
+export default function App() {
+  const videoRef = useRef(null);
+  const [videoSrc, setVideoSrc] = useState(null);
+  const [videoFile, setVideoFile] = useState(null);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [inPoint, setInPoint] = useState(0);
+  const [outPoint, setOutPoint] = useState(0);
+  const [moshMode, setMoshMode] = useState('all'); // 'all' | 'keep_first'
+  const [dragOver, setDragOver] = useState(false);
+  const [videoInfo, setVideoInfo] = useState('');
+
+  // FFmpeg state
+  const [ffmpegReady, setFfmpegReady] = useState(false);
+  const [ffmpegLoading, setFfmpegLoading] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [logs, setLogs] = useState([]);
+  const [outputUrl, setOutputUrl] = useState(null);
+  const [status, setStatus] = useState('idle'); // idle | loading | ready | processing | done | error
+  const ffmpegRef = useRef(null);
+
+  const addLog = (msg, type = 'info') => {
+    setLogs(prev => [...prev.slice(-30), { msg, type, id: Date.now() }]);
+  };
+
+  /* Load FFmpeg */
+  const loadFfmpeg = async () => {
+    setFfmpegLoading(true);
+    setStatus('loading');
+    addLog('Initializing ffmpeg.wasm...', 'info');
+    try {
+      const { createFFmpeg, fetchFile } = FFmpeg;
+      const ff = createFFmpeg({
+        corePath: 'https://unpkg.com/@ffmpeg/core-st@0.11.1/dist/ffmpeg-core.js',
+        log: false,
+        progress: ({ ratio }) => {
+          setProgress(Math.round(ratio * 100));
+        },
+        logger: ({ type, message }) => {
+          if (message.includes('Error') || message.includes('error')) {
+            addLog(message, 'err');
+          } else if (message.includes('frame=') || message.includes('time=')) {
+            addLog(message, 'info');
+          }
+        }
+      });
+
+      await ff.load();
+      ffmpegRef.current = { ff, fetchFile };
+      setFfmpegReady(true);
+      setStatus('ready');
+      addLog('ffmpeg.wasm loaded successfully', 'info');
+    } catch (e) {
+      addLog(`Failed to load ffmpeg: ${e.message}`, 'err');
+      setStatus('error');
+    }
+    setFfmpegLoading(false);
+  };
+
+  /* Video upload */
+  const handleFile = (file) => {
+    if (!file || !file.type.startsWith('video/')) return;
+    const url = URL.createObjectURL(file);
+    setVideoSrc(url);
+    setVideoFile(file);
+    setOutputUrl(null);
+    setLogs([]);
+    addLog(`Loaded: ${file.name} (${(file.size/1024/1024).toFixed(1)} MB)`);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault(); setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    handleFile(file);
+  };
+
+  /* Video events */
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    const onLoaded = () => {
+      const d = v.duration;
+      setDuration(d);
+      setInPoint(d * 0.25);
+      setOutPoint(d * 0.5);
+      setVideoInfo(`${Math.round(v.videoWidth)}×${Math.round(v.videoHeight)}`);
+      addLog(`Duration: ${formatTime(d)} | ${Math.round(v.videoWidth)}×${Math.round(v.videoHeight)}`);
+    };
+    const onTime = () => setCurrentTime(v.currentTime);
+    v.addEventListener('loadedmetadata', onLoaded);
+    v.addEventListener('timeupdate', onTime);
+    return () => {
+      v.removeEventListener('loadedmetadata', onLoaded);
+      v.removeEventListener('timeupdate', onTime);
+    };
+  }, [videoSrc]);
+
+  const handleSeek = useCallback((t) => {
+    setCurrentTime(t);
+    if (videoRef.current) videoRef.current.currentTime = t;
+  }, []);
+
+  /* ─── DATAMOSH PROCESSING ─────────────────────────────────── */
+  const runDatamosh = async () => {
+    if (!ffmpegRef.current || !videoFile || !ffmpegReady) return;
+    const { ff, fetchFile } = ffmpegRef.current;
+
+    setProcessing(true);
+    setProgress(0);
+    setOutputUrl(null);
+    setStatus('processing');
+    setLogs([]);
+
+    try {
+      addLog(`Writing input file...`);
+      ff.FS('writeFile', 'input', await fetchFile(videoFile));
+
+      /* STEP 1 ── Extract Clip A (0 → inPoint) as MPEG4 AVI */
+      addLog(`[1/5] Encoding Clip A (0 → ${formatTime(inPoint)})...`);
+      await ff.run(
+        '-i', 'input',
+        '-t', inPoint.toFixed(3),
+        '-c:v', 'mpeg4',
+        '-bf', '0',           // No B-frames (cleaner datamosh)
+        '-q:v', '3',
+        '-an',                // Audio handled separately
+        'clip_a.avi'
+      );
+      setProgress(20);
+      addLog(`Clip A done ✓`, 'info');
+
+      /* STEP 2 ── Extract Clip B (outPoint → end) as MPEG4 AVI with long GOP */
+      addLog(`[2/5] Encoding Clip B (${formatTime(outPoint)} → end)...`);
+      await ff.run(
+        '-i', 'input',
+        '-ss', outPoint.toFixed(3),
+        '-c:v', 'mpeg4',
+        '-bf', '0',
+        '-g', '9999',         // Force very long GOP (delays natural I-frames)
+        '-keyint_min', '9999',
+        '-q:v', '3',
+        '-an',
+        'clip_b.avi'
+      );
+      setProgress(40);
+      addLog(`Clip B done ✓`);
+
+      /* STEP 3 ── Binary I-frame strip on Clip B */
+      addLog(`[3/5] Stripping I-frames from Clip B (mode: ${moshMode})...`);
+      const clipBRaw = ff.FS('readFile', 'clip_b.avi');
+      const moshed = stripIFrames(clipBRaw.buffer, moshMode);
+      ff.FS('writeFile', 'clip_b_moshed.avi', new Uint8Array(moshed));
+      setProgress(55);
+      addLog(`I-frame strip done ✓ — motion vectors will bleed into Clip A's last frame`);
+
+      /* STEP 4 ── Extract & concat audio tracks */
+      addLog(`[4/5] Processing audio...`);
+      let hasAudio = true;
+      try {
+        await ff.run('-i', 'input', '-t', inPoint.toFixed(3), '-vn', '-c:a', 'copy', 'audio_a.aac');
+        await ff.run('-i', 'input', '-ss', outPoint.toFixed(3), '-vn', '-c:a', 'copy', 'audio_b.aac');
+        ff.FS('writeFile', 'audio_concat.txt',
+          "file 'audio_a.aac'\nfile 'audio_b.aac'"
+        );
+        await ff.run('-f', 'concat', '-safe', '0', '-i', 'audio_concat.txt', '-c:a', 'aac', 'audio_merged.aac');
+        addLog(`Audio tracks merged ✓`);
+      } catch(e) {
+        hasAudio = false;
+        addLog(`No audio track found — video-only output`, 'warn');
+      }
+      setProgress(65);
+
+      /* STEP 5 ── Concatenate video clips */
+      addLog(`[5/5] Concatenating and encoding WebM...`);
+      ff.FS('writeFile', 'video_concat.txt',
+        "file 'clip_a.avi'\nfile 'clip_b_moshed.avi'"
+      );
+      await ff.run(
+        '-f', 'concat', '-safe', '0',
+        '-i', 'video_concat.txt',
+        '-c', 'copy',
+        'merged_video.avi'
+      );
+      setProgress(80);
+
+      /* STEP 6 ── Encode final WebM */
+      const finalArgs = [
+        '-i', 'merged_video.avi',
+        ...(hasAudio ? ['-i', 'audio_merged.aac', '-map', '0:v', '-map', '1:a'] : []),
+        '-c:v', 'libvpx',
+        '-crf', '12',
+        '-b:v', '2M',
+        '-c:a', 'libvorbis',
+        '-q:a', '4',
+        'output.webm'
+      ];
+      await ff.run(...finalArgs);
+      setProgress(95);
+
+      const result = ff.FS('readFile', 'output.webm');
+      const blob = new Blob([result.buffer], { type: 'video/webm' });
+      const url = URL.createObjectURL(blob);
+      setOutputUrl(url);
+      setStatus('done');
+      setProgress(100);
+      addLog(`✓ DATAMOSH COMPLETE — ${(blob.size/1024/1024).toFixed(2)} MB`, 'info');
+
+      // Cleanup FS
+      ['input','clip_a.avi','clip_b.avi','clip_b_moshed.avi',
+       'audio_a.aac','audio_b.aac','audio_concat.txt','audio_merged.aac',
+       'video_concat.txt','merged_video.avi','output.webm'].forEach(f => {
+        try { ff.FS('unlink', f); } catch {}
+      });
+
+    } catch (err) {
+      addLog(`ERROR: ${err.message}`, 'err');
+      setStatus('error');
+    }
+    setProcessing(false);
+  };
+
+  const canProcess = ffmpegReady && videoFile && duration > 0 && outPoint > inPoint;
+
+  return (
+    <div className="app">
+      {/* HEADER */}
+      <header className="header">
+        <div style={{ display:'flex', alignItems:'center', gap: 16 }}>
+          <div className="logo" data-text="DATAMOSH.EXE">DATAMOSH.EXE</div>
+          <span className="header-tag">// GLITCH ENGINE v0.11</span>
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap: 8, fontSize: 10, letterSpacing: 2 }}>
+          <span className={`status-dot ${status === 'idle' ? 'idle' : status === 'error' ? 'error' : 'active'}`}/>
+          <span style={{ color: status === 'done' ? 'var(--green)' : status === 'error' ? 'var(--red)' : 'var(--dim)' }}>
+            {status.toUpperCase()}
+          </span>
+        </div>
+      </header>
+
+      {/* MAIN */}
+      <div className="main">
+        {/* VIDEO */}
+        <div className="video-area">
+          {!videoSrc ? (
+            <div
+              className={`upload-zone ${dragOver ? 'drag-over' : ''}`}
+              onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={handleDrop}
+              onClick={() => document.getElementById('file-input').click()}
+            >
+              <input
+                id="file-input" type="file" className="file-input"
+                accept="video/*"
+                onChange={e => handleFile(e.target.files[0])}
+              />
+              <div className="upload-icon">▶</div>
+              <div className="upload-label">Drop video or click to upload</div>
+              <div className="upload-sub">MP4 · MOV · AVI · WEBM · MKV</div>
+            </div>
+          ) : (
+            <>
+              <video
+                ref={videoRef}
+                src={videoSrc}
+                style={{ maxWidth:'100%', maxHeight:'100%', display:'block' }}
+                onClick={() => {
+                  if(videoRef.current.paused) videoRef.current.play();
+                  else videoRef.current.pause();
+                }}
+              />
+              <div className="timecode">{formatTime(currentTime)}</div>
+              {videoInfo && <div className="video-info">{videoInfo} &nbsp;·&nbsp; {(videoFile?.size/1024/1024).toFixed(1)}MB</div>}
+              <div
+                style={{
+                  position:'absolute', top:8, left:8,
+                  fontSize:9, padding:'3px 8px',
+                  background:'rgba(0,0,0,.7)',
+                  color:'var(--red)', border:'1px solid var(--red)',
+                  letterSpacing:2, cursor:'pointer'
+                }}
+                onClick={() => {
+                  setVideoSrc(null); setVideoFile(null); setDuration(0);
+                  setCurrentTime(0); setInPoint(0); setOutPoint(0);
+                  setOutputUrl(null); setLogs([]);
+                }}
+              >✕ UNLOAD</div>
+            </>
+          )}
+        </div>
+
+        {/* SIDEBAR */}
+        <div className="sidebar">
+          {/* IN/OUT MARKERS */}
+          <div className="panel">
+            <div className="panel-title">CUT POINTS</div>
+            <div className="marker-row">
+              <span className="marker-label" style={{color:'var(--cyan)'}}>IN</span>
+              <div className="marker-value" style={{color:'var(--cyan)'}}>{formatTime(inPoint)}</div>
+              <button className="marker-btn" onClick={() => setInPoint(currentTime)}>SET</button>
+            </div>
+            <div className="marker-row">
+              <span className="marker-label" style={{color:'var(--amber)'}}>OUT</span>
+              <div className="marker-value" style={{color:'var(--amber)'}}>{formatTime(outPoint)}</div>
+              <button className="marker-btn" onClick={() => setOutPoint(currentTime)}>SET</button>
+            </div>
+            {duration > 0 && (
+              <div className="range-display">
+                CLIP REMOVED: {formatTime(outPoint - inPoint)} &nbsp;·&nbsp; MOSH ZONE
+              </div>
+            )}
+          </div>
+
+          {/* MOSH MODE */}
+          <div className="panel">
+            <div className="panel-title">MOSH INTENSITY</div>
+            {[
+              { id:'all', label:'FULL DATAMOSH', sub:'Strip ALL I-frames from Clip B. Maximum warping — Clip A bleeds into every frame.' },
+              { id:'keep_first', label:'SINGLE HIT', sub:'Keep first I-frame, strip the rest. Shorter initial glitch, then stabilizes.' },
+            ].map(opt => (
+              <div
+                key={opt.id}
+                className={`mosh-option ${moshMode === opt.id ? 'selected' : ''}`}
+                onClick={() => setMoshMode(opt.id)}
+              >
+                <div className="mosh-radio"/>
+                <div>
+                  <div className="mosh-option-text">{opt.label}</div>
+                  <div className="mosh-option-sub">{opt.sub}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* FFMPEG / PROCESS */}
+          <div className="panel" style={{flex:1}}>
+            <div className="panel-title">FFMPEG ENGINE</div>
+
+            {!ffmpegReady && !ffmpegLoading && (
+              <div className="ffmpeg-not-ready">
+                ⚠ SINGLE-THREAD WASM ENGINE<br/>
+                <span style={{color:'var(--dim)'}}>No SharedArrayBuffer required.</span>
+              </div>
+            )}
+
+            {!ffmpegReady ? (
+              <button
+                className="process-btn"
+                style={{ fontSize:16, background: ffmpegLoading ? 'var(--bg3)' : 'var(--amber)', color: '#000', marginBottom:8 }}
+                onClick={loadFfmpeg}
+                disabled={ffmpegLoading}
+              >
+                {ffmpegLoading ? 'LOADING WASM...' : 'LOAD FFMPEG ENGINE'}
+              </button>
+            ) : null}
+
+            {ffmpegReady && (
+              <button
+                className={`process-btn ${processing ? 'loading' : ''}`}
+                onClick={runDatamosh}
+                disabled={!canProcess || processing}
+                style={{ marginBottom: 8 }}
+              >
+                {processing ? `MOSHING... ${progress}%` : 'EXECUTE DATAMOSH'}
+              </button>
+            )}
+
+            {(processing || progress > 0) && (
+              <>
+                <div className="progress-bar-track">
+                  <div className="progress-bar-fill" style={{ width: `${progress}%` }}/>
+                </div>
+                <div className="progress-label">{progress}% COMPLETE</div>
+              </>
+            )}
+
+            {outputUrl && (
+              <a href={outputUrl} download="datamosh_output.webm" style={{ textDecoration:'none' }}>
+                <button className="download-btn" style={{marginTop:10}}>
+                  ↓ DOWNLOAD WEBM
+                </button>
+              </a>
+            )}
+          </div>
+
+          {/* LOGS */}
+          {logs.length > 0 && (
+            <div className="panel" style={{ maxHeight: 120, overflowY:'auto' }}>
+              <div className="panel-title">CONSOLE</div>
+              <div className="log-area">
+                {logs.map(l => (
+                  <div key={l.id} className={`log-line ${l.type}`}>&gt; {l.msg}</div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* TIMELINE */}
+      <Timeline
+        videoRef={videoRef}
+        videoSrc={videoSrc}
+        duration={duration}
+        currentTime={currentTime}
+        inPoint={inPoint}
+        outPoint={outPoint}
+        setInPoint={setInPoint}
+        setOutPoint={setOutPoint}
+        onSeek={handleSeek}
+      />
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
