@@ -889,11 +889,13 @@ btnLoad.addEventListener('click',function(){
       setProgress(Math.round((e.progress||0)*100));
     });
     var base='https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm/';
+    var workerBase='https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/esm/';
     Promise.all([
-      toBlobURL(base+'ffmpeg-core.js',   'text/javascript'),
-      toBlobURL(base+'ffmpeg-core.wasm', 'application/wasm'),
+      toBlobURL(base+'ffmpeg-core.js',     'text/javascript'),
+      toBlobURL(base+'ffmpeg-core.wasm',   'application/wasm'),
+      toBlobURL(workerBase+'worker.js',    'text/javascript'),
     ]).then(function(urls){
-      return ff.load({ coreURL:urls[0], wasmURL:urls[1] });
+      return ff.load({ coreURL:urls[0], wasmURL:urls[1], workerURL:urls[2] });
     }).then(function(){
       ffRef=ff;
       fetchFileRef=fetchFileFn;
