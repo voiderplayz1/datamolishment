@@ -3,350 +3,605 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DATAMOSH.EXE</title>
+<title>Datamosh — Video Glitch Editor</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#080808;--bg2:#111;--bg3:#1a1a1a;--red:#ff2020;--green:#00ff6a;--cyan:#00e5ff;--amber:#ffb300;--text:#d4d4d4;--dim:#555;--bd:#2a2a2a}
-*{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;background:var(--bg);color:var(--text);font-family:'IBM Plex Mono',monospace;overflow:hidden}
-body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.12) 2px,rgba(0,0,0,.12) 4px);pointer-events:none;z-index:9999}
-@keyframes glitch1{0%,100%{clip-path:inset(0 0 96% 0);transform:translate(-2px,0)}25%{clip-path:inset(40% 0 45% 0);transform:translate(2px,0)}50%{clip-path:inset(70% 0 15% 0);transform:translate(-1px,0)}75%{clip-path:inset(15% 0 75% 0);transform:translate(3px,0)}}
-@keyframes glitch2{0%,100%{clip-path:inset(0 0 96% 0);transform:translate(2px,0);color:var(--cyan)}25%{clip-path:inset(55% 0 30% 0);transform:translate(-2px,0)}50%{clip-path:inset(20% 0 65% 0);transform:translate(1px,0)}75%{clip-path:inset(80% 0 8% 0);transform:translate(-3px,0)}}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-@keyframes stripe{0%{background-position:0 0}100%{background-position:40px 0}}
-@keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-.app{display:grid;grid-template-rows:48px 1fr 200px;height:100vh}
-header{display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:var(--bg);border-bottom:2px solid var(--red)}
-.logo{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:5px;color:#fff;position:relative;user-select:none}
-.logo::before,.logo::after{content:attr(data-t);position:absolute;top:0;left:0;color:var(--red)}
-.logo::before{animation:glitch1 3.5s infinite steps(1)}
-.logo::after{animation:glitch2 3.5s infinite steps(1)}
-.hdr-tag{font-size:10px;color:var(--dim);letter-spacing:2px}
-.dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:6px}
-.dot.on{background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s infinite}
-.dot.err{background:var(--red);box-shadow:0 0 8px var(--red)}
-.dot.off{background:var(--dim)}
-.main{display:grid;grid-template-columns:1fr 300px;overflow:hidden;border-bottom:1px solid var(--bd)}
-.vid-wrap{position:relative;background:#000;display:flex;align-items:center;justify-content:center;border-right:1px solid var(--bd);overflow:hidden}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#1a1a1a;
+  --surface:#242424;
+  --surface2:#2e2e2e;
+  --surface3:#383838;
+  --border:#3d3d3d;
+  --border2:#4a4a4a;
+  --text:#e8e8e8;
+  --text2:#a0a0a0;
+  --text3:#666;
+  --blue:#3b82f6;
+  --blue-d:#2563eb;
+  --green:#22c55e;
+  --red:#ef4444;
+  --amber:#f59e0b;
+  --cyan:#06b6d4;
+  --r:5px;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'DM Sans',system-ui,sans-serif;font-size:13px;-webkit-font-smoothing:antialiased}
+
+/* LAYOUT */
+.app{display:grid;grid-template-rows:44px 1fr 188px;height:100vh}
+
+/* HEADER */
+.hdr{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;background:var(--surface);border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.hdr-left{display:flex;align-items:center;gap:10px}
+.app-logo{
+  display:flex;align-items:center;gap:7px;
+  font-size:14px;font-weight:600;color:var(--text);
+}
+.app-logo svg{color:var(--blue)}
+.hdr-divider{width:1px;height:20px;background:var(--border)}
+.hdr-file{font-size:12px;color:var(--text3);font-style:italic}
+.status-pill{
+  display:flex;align-items:center;gap:5px;
+  font-size:11px;font-weight:500;padding:3px 9px;
+  border-radius:20px;background:var(--surface2);color:var(--text3);
+}
+.status-pip{width:6px;height:6px;border-radius:50%;background:var(--text3);flex-shrink:0;transition:background .3s,box-shadow .3s}
+.status-pill.s-active .status-pip{background:var(--green);box-shadow:0 0 5px var(--green)}
+.status-pill.s-error  .status-pip{background:var(--red)}
+.status-pill.s-active,.status-pill.s-done{color:var(--text2)}
+
+/* MAIN */
+.main{display:grid;grid-template-columns:1fr 284px;overflow:hidden}
+
+/* VIDEO */
+.vid-panel{position:relative;background:#0d0d0d;display:flex;align-items:center;justify-content:center;border-right:1px solid var(--border);overflow:hidden}
 #player{max-width:100%;max-height:100%;display:none}
-.upload-zone{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;border:2px dashed var(--bd);cursor:pointer;transition:border-color .2s}
-.upload-zone:hover,.upload-zone.drag{border-color:var(--red)}
-.upload-icon{font-size:52px;opacity:.25;line-height:1}
-.upload-lbl{font-size:11px;letter-spacing:3px;color:var(--dim);text-transform:uppercase}
-.upload-sub{font-size:10px;color:#333}
-.tc{position:absolute;bottom:10px;left:10px;font-size:12px;letter-spacing:2px;background:rgba(0,0,0,.75);padding:3px 8px;color:var(--green);border:1px solid var(--green)}
-.vinfo{position:absolute;top:10px;right:10px;font-size:9px;color:var(--dim);background:rgba(0,0,0,.75);padding:3px 8px;letter-spacing:1px}
-.unload-btn{position:absolute;top:10px;left:10px;font-size:9px;padding:3px 8px;background:rgba(0,0,0,.75);color:var(--red);border:1px solid var(--red);cursor:pointer;letter-spacing:2px;z-index:5}
-.sidebar{display:flex;flex-direction:column;background:var(--bg2);overflow-y:auto}
-.panel{border-bottom:1px solid var(--bd);padding:14px}
-.ptitle{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--dim);margin-bottom:12px;display:flex;align-items:center;gap:8px}
-.ptitle::before{content:'▶';font-size:7px;color:var(--red)}
-.mrow{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-.mlbl{font-size:9px;letter-spacing:2px;color:var(--dim);width:28px;text-transform:uppercase}
-.mval{flex:1;font-size:13px;padding:6px 8px;background:var(--bg3);border:1px solid var(--bd);letter-spacing:1px}
-.mbtn{font-size:9px;letter-spacing:1px;padding:6px 10px;background:transparent;border:1px solid var(--bd);color:var(--dim);cursor:pointer;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;transition:all .15s}
-.mbtn:hover{border-color:var(--cyan);color:var(--cyan)}
-.range-disp{font-size:10px;color:var(--amber);padding:8px;background:var(--bg3);border:1px solid rgba(255,179,0,.2);margin-top:4px;letter-spacing:1px}
-.mopt{display:flex;align-items:flex-start;gap:10px;padding:8px;cursor:pointer;border:1px solid var(--bd);margin-bottom:6px;transition:all .15s}
-.mopt:hover{border-color:var(--red)}
-.mopt.sel{border-color:var(--red);background:rgba(255,32,32,.06)}
-.mradio{width:10px;height:10px;min-width:10px;border:1px solid var(--dim);margin-top:2px;position:relative}
-.mopt.sel .mradio{border-color:var(--red)}
-.mopt.sel .mradio::after{content:'';position:absolute;inset:2px;background:var(--red)}
-.mopt-txt{font-size:10px;letter-spacing:1px}
-.mopt-sub{font-size:9px;color:var(--dim);margin-top:2px;line-height:1.4}
-.proc-btn{width:100%;padding:14px;font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:4px;background:var(--red);color:#fff;border:none;cursor:pointer;position:relative;overflow:hidden;transition:all .15s}
-.proc-btn:hover:not(:disabled){background:#ff4040;box-shadow:0 0 20px rgba(255,32,32,.4)}
-.proc-btn:disabled{background:var(--bg3);color:var(--dim);cursor:not-allowed}
-.proc-btn.running::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(-45deg,rgba(255,255,255,.05) 0,rgba(255,255,255,.05) 10px,transparent 10px,transparent 20px);background-size:40px 40px;animation:stripe .6s linear infinite}
-.pbar-track{height:4px;background:var(--bg3);margin:10px 0;overflow:hidden}
-.pbar-fill{height:100%;background:linear-gradient(90deg,var(--red),var(--amber));transition:width .3s;box-shadow:0 0 8px var(--red)}
-.plbl{font-size:9px;letter-spacing:2px;color:var(--dim);text-transform:uppercase}
-.log-wrap{font-size:9px;line-height:1.7}
-.logline{color:var(--dim)}
-.logline.ok{color:var(--green)}
-.logline.warn{color:var(--amber)}
-.logline.err{color:var(--red)}
-.dl-btn{width:100%;padding:12px;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:3px;background:transparent;color:var(--green);border:1px solid var(--green);cursor:pointer;transition:all .2s;animation:fadein .4s;text-decoration:none;display:block;text-align:center;margin-top:10px}
-.dl-btn:hover{background:var(--green);color:#000;box-shadow:0 0 20px rgba(0,255,106,.3)}
-.load-ff-btn{width:100%;padding:12px;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:3px;background:var(--amber);color:#000;border:none;cursor:pointer;margin-bottom:8px;transition:all .15s}
-.load-ff-btn:hover:not(:disabled){background:#ffc830}
-.load-ff-btn:disabled{background:var(--bg3);color:var(--dim);cursor:not-allowed}
-.ff-notice{font-size:9px;color:var(--amber);padding:8px;border:1px solid rgba(255,179,0,.2);margin-bottom:8px;letter-spacing:1px;line-height:1.6}
-.tl-area{background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
-.tl-toolbar{display:flex;align-items:center;gap:12px;padding:5px 12px;border-bottom:1px solid var(--bd);background:var(--bg2);flex-shrink:0}
-.tl-lbl{font-size:9px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;white-space:nowrap}
-.zoom-sl{-webkit-appearance:none;width:100px;height:4px;background:var(--bd);outline:none;cursor:pointer}
-.zoom-sl::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;background:var(--red);cursor:pointer}
-.zoom-val{font-size:10px;color:var(--red);min-width:30px;letter-spacing:1px}
-.sep{width:1px;height:18px;background:var(--bd);flex-shrink:0}
-.tbtn{font-size:10px;padding:4px 9px;background:transparent;border:1px solid var(--bd);color:var(--dim);cursor:pointer;font-family:'IBM Plex Mono',monospace;letter-spacing:1px;transition:all .1s;white-space:nowrap}
-.tbtn:hover{border-color:var(--text);color:var(--text)}
-.tbtn.playing{border-color:var(--green);color:var(--green)}
+.drop-zone{
+  position:absolute;inset:12px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  border:1.5px dashed var(--border2);border-radius:8px;cursor:pointer;
+  transition:border-color .2s,background .2s;
+}
+.drop-zone:hover,.drop-zone.drag{border-color:var(--blue);background:rgba(59,130,246,.05)}
+.drop-icon{
+  width:42px;height:42px;border-radius:10px;background:var(--surface2);
+  display:flex;align-items:center;justify-content:center;color:var(--text3);
+}
+.drop-title{font-size:13px;font-weight:500;color:var(--text2)}
+.drop-sub{font-size:11px;color:var(--text3)}
+input[type=file]{display:none}
+.vid-tc{
+  position:absolute;bottom:10px;left:10px;display:none;
+  font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;
+  background:rgba(0,0,0,.75);color:var(--green);padding:3px 8px;border-radius:4px;
+}
+.vid-info{
+  position:absolute;top:10px;right:10px;display:none;
+  font-size:11px;color:var(--text3);background:rgba(0,0,0,.75);padding:3px 8px;border-radius:4px;
+}
+.vid-close{
+  position:absolute;top:10px;left:10px;display:none;
+  font-size:11px;font-weight:500;padding:3px 9px;
+  background:rgba(0,0,0,.75);color:var(--text2);border:1px solid var(--border2);
+  border-radius:4px;cursor:pointer;transition:border-color .15s,color .15s;
+}
+.vid-close:hover{border-color:var(--red);color:var(--red)}
+
+/* SIDEBAR */
+.sidebar{display:flex;flex-direction:column;background:var(--surface);overflow-y:auto}
+.sidebar::-webkit-scrollbar{width:4px}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.sec{padding:14px 16px;border-bottom:1px solid var(--border)}
+.sec-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:11px}
+
+/* CUT POINTS */
+.pt-row{display:flex;align-items:center;gap:7px;margin-bottom:7px}
+.pt-lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;width:24px;flex-shrink:0}
+.pt-lbl.in{color:var(--cyan)}.pt-lbl.out{color:var(--amber)}
+.pt-val{
+  flex:1;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;
+  background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);
+  padding:5px 8px;color:var(--text);
+}
+.btn-set{
+  font-size:11px;font-weight:500;padding:5px 10px;
+  background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);
+  color:var(--text2);cursor:pointer;transition:all .15s;
+}
+.btn-set:hover{border-color:var(--blue);color:var(--blue);background:rgba(59,130,246,.08)}
+.cut-info{
+  font-size:11px;color:var(--text3);margin-top:6px;padding:7px 9px;
+  background:var(--surface2);border-radius:var(--r);border-left:2px solid var(--amber);display:none;
+}
+
+/* MOSH OPTIONS */
+.mopt{
+  display:flex;align-items:flex-start;gap:9px;padding:9px 10px;
+  border-radius:var(--r);cursor:pointer;border:1px solid var(--border);
+  margin-bottom:6px;transition:all .15s;
+}
+.mopt:hover{border-color:var(--border2);background:var(--surface2)}
+.mopt.sel{border-color:var(--blue);background:rgba(59,130,246,.08)}
+.mopt-radio{
+  width:14px;height:14px;min-width:14px;border-radius:50%;
+  border:1.5px solid var(--border2);margin-top:1px;position:relative;transition:border-color .15s;
+}
+.mopt.sel .mopt-radio{border-color:var(--blue)}
+.mopt.sel .mopt-radio::after{content:'';position:absolute;inset:3px;border-radius:50%;background:var(--blue)}
+.mopt-name{font-size:12px;font-weight:500;color:var(--text)}
+.mopt-desc{font-size:11px;color:var(--text3);margin-top:2px;line-height:1.45}
+
+/* EXPORT RESOLUTION */
+.res-grid{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px}
+.res-chip{
+  font-size:11px;font-weight:500;padding:4px 9px;
+  border-radius:4px;border:1px solid var(--border);
+  background:var(--surface2);color:var(--text2);cursor:pointer;transition:all .15s;
+}
+.res-chip:hover:not(.locked){border-color:var(--border2);color:var(--text)}
+.res-chip.sel{border-color:var(--blue);background:rgba(59,130,246,.12);color:var(--blue);font-weight:600}
+.res-chip.locked{opacity:.3;cursor:not-allowed}
+
+/* ENGINE BUTTONS */
+.btn-primary{
+  width:100%;padding:9px;font-size:13px;font-weight:600;
+  background:var(--blue);color:#fff;border:none;border-radius:var(--r);
+  cursor:pointer;transition:background .15s;
+}
+.btn-primary:hover:not(:disabled){background:var(--blue-d)}
+.btn-primary:disabled{background:var(--surface2);color:var(--text3);cursor:not-allowed}
+.engine-notice{
+  font-size:11px;color:var(--text2);line-height:1.55;padding:8px 10px;
+  background:var(--surface2);border-radius:var(--r);
+  border-left:2px solid var(--blue);margin-bottom:10px;
+}
+@keyframes stripe{from{background-position:0 0}to{background-position:32px 0}}
+.btn-primary.running::after{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(-45deg,rgba(255,255,255,.07) 0,rgba(255,255,255,.07) 8px,transparent 8px,transparent 16px);
+  background-size:32px 32px;animation:stripe .5s linear infinite;
+}
+.btn-primary.running{position:relative;overflow:hidden}
+
+/* PROGRESS */
+.prog-track{height:3px;background:var(--surface2);border-radius:2px;margin:8px 0;overflow:hidden}
+.prog-fill{height:100%;background:var(--blue);border-radius:2px;transition:width .35s;width:0%}
+.prog-lbl{font-size:11px;color:var(--text3)}
+
+/* DOWNLOAD */
+.dl-section{
+  margin-top:10px;padding:12px;
+  background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.22);
+  border-radius:var(--r);display:none;
+}
+.dl-head{font-size:11px;font-weight:600;color:var(--green);margin-bottom:9px;
+  display:flex;align-items:center;gap:6px}
+.dl-formats{display:flex;flex-direction:column;gap:6px}
+.dl-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.dl-res-name{font-size:12px;font-weight:500;color:var(--text)}
+.dl-res-sub{font-size:10px;color:var(--text3);margin-top:1px}
+.btn-dl{
+  font-size:11px;font-weight:600;padding:5px 12px;
+  background:var(--green);color:#000;border:none;border-radius:4px;
+  text-decoration:none;cursor:pointer;transition:opacity .15s;flex-shrink:0;
+  display:inline-block;text-align:center;
+}
+.btn-dl:hover{opacity:.85}
+.btn-dl.rendering{background:var(--surface3);color:var(--text3);cursor:not-allowed;pointer-events:none}
+
+/* LOG */
+.log-wrap{font-family:'JetBrains Mono',monospace;font-size:10px;max-height:90px;overflow-y:auto;line-height:1.65}
+.log-wrap::-webkit-scrollbar{width:3px}
+.log-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.log-ln{color:var(--text3)}
+.log-ln.ok{color:var(--green)}
+.log-ln.warn{color:var(--amber)}
+.log-ln.err{color:var(--red)}
+
+/* TIMELINE */
+.tl-area{display:flex;flex-direction:column;background:var(--bg);overflow:hidden;flex-shrink:0}
+.tl-bar{
+  display:flex;align-items:center;gap:9px;padding:0 12px;height:34px;flex-shrink:0;
+  background:var(--surface);border-bottom:1px solid var(--border);
+}
+.tl-lbl{font-size:11px;font-weight:500;color:var(--text3);white-space:nowrap}
+.zoom-range{
+  -webkit-appearance:none;width:88px;height:3px;
+  background:var(--border);outline:none;cursor:pointer;border-radius:2px;
+}
+.zoom-range::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--blue);cursor:pointer}
+.tl-sep{width:1px;height:15px;background:var(--border);flex-shrink:0}
+.tl-btn{
+  font-size:11px;font-weight:500;padding:3px 9px;
+  background:var(--surface2);border:1px solid var(--border);border-radius:4px;
+  color:var(--text2);cursor:pointer;transition:all .12s;white-space:nowrap;
+}
+.tl-btn:hover{border-color:var(--border2);color:var(--text)}
+.tl-btn.playing{border-color:var(--blue);color:var(--blue)}
+.tl-time{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);margin-left:auto;white-space:nowrap}
+
 .tl-scroll{flex:1;overflow-x:auto;overflow-y:hidden;position:relative;cursor:crosshair}
 .tl-scroll::-webkit-scrollbar{height:4px}
-.tl-scroll::-webkit-scrollbar-track{background:var(--bg2)}
-.tl-scroll::-webkit-scrollbar-thumb{background:var(--bd)}
+.tl-scroll::-webkit-scrollbar-track{background:var(--surface)}
+.tl-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 .tl-inner{position:relative}
-.tl-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;letter-spacing:3px;color:var(--dim);text-transform:uppercase;pointer-events:none}
+.tl-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text3);pointer-events:none}
+
+/* stacked canvases: filmstrip below, overlay on top */
+.tl-stack{position:relative;height:64px}
+.tl-stack canvas{position:absolute;top:0;left:0}
+#filmCvs{z-index:1}
+#overlayCvs{z-index:2;pointer-events:none}
+#rulerCvs{display:block;background:var(--surface);border-bottom:1px solid var(--border)}
+#waveCvs{display:block;background:var(--bg);border-top:1px solid var(--border)}
 </style>
 </head>
 <body>
 <div class="app">
-  <header>
-    <div style="display:flex;align-items:center;gap:16px">
-      <div class="logo" data-t="DATAMOSH.EXE">DATAMOSH.EXE</div>
-      <span class="hdr-tag">// GLITCH ENGINE v0.11</span>
+
+  <!-- HEADER -->
+  <header class="hdr">
+    <div class="hdr-left">
+      <div class="app-logo">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="4" width="20" height="16" rx="2"/><path d="M10 9l5 3-5 3V9z"/>
+        </svg>
+        Datamosh
+      </div>
+      <div class="hdr-divider"></div>
+      <div class="hdr-file" id="hdrFile">No file loaded</div>
     </div>
-    <div style="display:flex;align-items:center;gap:6px;font-size:10px;letter-spacing:2px">
-      <span class="dot off" id="statusDot"></span>
-      <span id="statusTxt" style="color:var(--dim)">IDLE</span>
+    <div class="status-pill" id="statusPill">
+      <span class="status-pip"></span>
+      <span id="statusTxt">Idle</span>
     </div>
   </header>
 
+  <!-- MAIN -->
   <div class="main">
-    <div class="vid-wrap" id="vidWrap">
-      <div class="upload-zone" id="uploadZone">
-        <div class="upload-icon">▶</div>
-        <div class="upload-lbl">Drop video here or click to upload</div>
-        <div class="upload-sub">MP4 · MOV · AVI · WEBM · MKV</div>
-        <input type="file" id="fileInput" accept="video/*" style="display:none">
+
+    <!-- VIDEO PANEL -->
+    <div class="vid-panel" id="vidPanel">
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept="video/*">
+        <div class="drop-icon">
+          <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+          </svg>
+        </div>
+        <div class="drop-title">Drop a video file here</div>
+        <div class="drop-sub">MP4, MOV, AVI, WebM, MKV — or click to browse</div>
       </div>
       <video id="player" playsinline></video>
-      <div class="tc" id="timecode" style="display:none">00:00.000</div>
-      <div class="vinfo" id="vinfo" style="display:none"></div>
-      <button class="unload-btn" id="unloadBtn" style="display:none">✕ UNLOAD</button>
+      <div class="vid-tc" id="vidTc">00:00.000</div>
+      <div class="vid-info" id="vidInfo"></div>
+      <button class="vid-close" id="vidClose">✕ Unload</button>
     </div>
 
+    <!-- SIDEBAR -->
     <div class="sidebar">
-      <div class="panel">
-        <div class="ptitle">CUT POINTS</div>
-        <div class="mrow">
-          <span class="mlbl" style="color:var(--cyan)">IN</span>
-          <div class="mval" id="inVal" style="color:var(--cyan)">00:00.000</div>
-          <button class="mbtn" id="setInBtn">SET</button>
+
+      <!-- CUT POINTS -->
+      <div class="sec">
+        <div class="sec-title">Cut Points</div>
+        <div class="pt-row">
+          <span class="pt-lbl in">In</span>
+          <div class="pt-val" id="inVal">00:00.000</div>
+          <button class="btn-set" id="btnSetIn">Set</button>
         </div>
-        <div class="mrow">
-          <span class="mlbl" style="color:var(--amber)">OUT</span>
-          <div class="mval" id="outVal" style="color:var(--amber)">00:00.000</div>
-          <button class="mbtn" id="setOutBtn">SET</button>
+        <div class="pt-row">
+          <span class="pt-lbl out">Out</span>
+          <div class="pt-val" id="outVal">00:00.000</div>
+          <button class="btn-set" id="btnSetOut">Set</button>
         </div>
-        <div class="range-disp" id="rangeDisp" style="display:none"></div>
+        <div class="cut-info" id="cutInfo"></div>
       </div>
 
-      <div class="panel">
-        <div class="ptitle">MOSH INTENSITY</div>
-        <div class="mopt sel" data-mode="all" id="opt-all">
-          <div class="mradio"></div>
+      <!-- MOSH INTENSITY -->
+      <div class="sec">
+        <div class="sec-title">Glitch Mode</div>
+        <div class="mopt sel" data-mode="all" id="mode-all">
+          <div class="mopt-radio"></div>
           <div>
-            <div class="mopt-txt">FULL DATAMOSH</div>
-            <div class="mopt-sub">Strip ALL I-frames from Clip B. Clip A's final frame bleeds through the entire sequence.</div>
+            <div class="mopt-name">Full Datamosh</div>
+            <div class="mopt-desc">Strip all I-frames from Clip B. Clip A's final frame bleeds through the entire sequence.</div>
           </div>
         </div>
-        <div class="mopt" data-mode="keep_first" id="opt-keep_first">
-          <div class="mradio"></div>
+        <div class="mopt" data-mode="keep_first" id="mode-keep_first">
+          <div class="mopt-radio"></div>
           <div>
-            <div class="mopt-txt">SINGLE HIT</div>
-            <div class="mopt-sub">Keep first I-frame, strip the rest. Brief glitch burst then video stabilises.</div>
+            <div class="mopt-name">Single Hit</div>
+            <div class="mopt-desc">Keep only the first I-frame. One sharp glitch burst, then the video stabilises.</div>
           </div>
         </div>
       </div>
 
-      <div class="panel" style="flex:1">
-        <div class="ptitle">FFMPEG ENGINE</div>
-        <div class="ff-notice" id="ffNotice">⚠ BROWSER-BASED PROCESSING<br><span style="color:var(--dim)">Click below to load the WASM engine (~25MB one-time download).</span></div>
-        <button class="load-ff-btn" id="loadFfBtn">LOAD FFMPEG ENGINE</button>
-        <button class="proc-btn" id="procBtn" disabled>EXECUTE DATAMOSH</button>
-        <div class="pbar-track" id="pbarTrack" style="display:none">
-          <div class="pbar-fill" id="pbarFill" style="width:0%"></div>
+      <!-- EXPORT RESOLUTION -->
+      <div class="sec">
+        <div class="sec-title">Export Resolution</div>
+        <div class="res-grid" id="resGrid">
+          <!-- populated by JS once video loads -->
+          <div style="font-size:11px;color:var(--text3)">Load a video to see options</div>
         </div>
-        <div class="plbl" id="pLbl"></div>
-        <a id="dlLink" style="display:none"></a>
       </div>
 
-      <div class="panel" id="logPanel" style="display:none;max-height:130px;overflow-y:auto">
-        <div class="ptitle">CONSOLE</div>
+      <!-- ENGINE -->
+      <div class="sec" style="flex:1">
+        <div class="sec-title">Processing</div>
+        <div class="engine-notice" id="engineNotice">
+          Click <strong>Load Engine</strong> to initialise the in-browser video processor. This is a one-time ~25 MB download.
+        </div>
+        <button class="btn-primary" id="btnLoad" style="margin-bottom:8px">Load Engine</button>
+        <button class="btn-primary" id="btnProcess" disabled>Process &amp; Render</button>
+        <div class="prog-track" id="progTrack" style="display:none">
+          <div class="prog-fill" id="progFill"></div>
+        </div>
+        <div class="prog-lbl" id="progLbl"></div>
+
+        <!-- DOWNLOAD SECTION -->
+        <div class="dl-section" id="dlSection">
+          <div class="dl-head">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            Export ready
+          </div>
+          <div class="dl-formats" id="dlFormats"></div>
+        </div>
+      </div>
+
+      <!-- LOG -->
+      <div class="sec" id="logSec" style="display:none">
+        <div class="sec-title">Console</div>
         <div class="log-wrap" id="logWrap"></div>
       </div>
+
     </div>
   </div>
 
+  <!-- TIMELINE -->
   <div class="tl-area">
-    <div class="tl-toolbar">
-      <span class="tl-lbl">ZOOM</span>
-      <input type="range" class="zoom-sl" id="zoomSl" min="1" max="20" step="0.5" value="1">
-      <span class="zoom-val" id="zoomVal">1.0×</span>
-      <div class="sep"></div>
-      <button class="tbtn" id="playBtn">▶ PLAY</button>
-      <button class="tbtn" id="resetBtn">⏮ RESET</button>
-      <div class="sep"></div>
-      <span class="tl-lbl" style="color:#2a2a2a">DRAG PLAYHEAD · GRAB IN/OUT HANDLES</span>
-      <span id="tlTime" style="font-size:10px;color:var(--dim);margin-left:auto;letter-spacing:1px;flex-shrink:0"></span>
+    <div class="tl-bar">
+      <span class="tl-lbl">Zoom</span>
+      <input type="range" class="zoom-range" id="zoomRange" min="1" max="20" step="0.5" value="1">
+      <span class="tl-lbl" id="zoomLbl" style="min-width:28px;color:var(--text2)">1×</span>
+      <div class="tl-sep"></div>
+      <button class="tl-btn" id="btnPlay">▶ Play</button>
+      <button class="tl-btn" id="btnReset">⏮</button>
+      <div class="tl-sep"></div>
+      <span class="tl-lbl" style="color:var(--border2)">Drag playhead · Grab In/Out handles</span>
+      <span class="tl-time" id="tlTime"></span>
     </div>
     <div class="tl-scroll" id="tlScroll">
-      <div class="tl-empty" id="tlEmpty">LOAD A VIDEO TO BEGIN</div>
+      <div class="tl-empty" id="tlEmpty">Load a video to begin</div>
       <div class="tl-inner" id="tlInner" style="display:none">
-        <canvas id="rulerCvs" height="22" style="display:block;background:var(--bg2);border-bottom:1px solid var(--bd)"></canvas>
-        <canvas id="filmCvs" height="60" style="display:block;background:#000;border-bottom:1px solid var(--bd);cursor:crosshair"></canvas>
-        <canvas id="waveCvs" height="28" style="display:block;background:var(--bg2)"></canvas>
+        <canvas id="rulerCvs" height="20"></canvas>
+        <div class="tl-stack" id="tlStack">
+          <canvas id="filmCvs" height="64"></canvas>
+          <canvas id="overlayCvs" height="64"></canvas>
+        </div>
+        <canvas id="waveCvs" height="22"></canvas>
       </div>
     </div>
   </div>
+
 </div>
 
-<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
+<!-- FFmpeg loaded from jsDelivr (most reliable public CDN) -->
+<script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js" onerror="ffScriptFailed()"></script>
 <script>
+'use strict';
+
+/* ── FFmpeg script load failure ── */
+function ffScriptFailed(){
+  log('FFmpeg script failed to load from CDN. Check your internet connection.','err');
+  setStatus('error','Engine load failed');
+  btnLoad.textContent='Retry';
+  btnLoad.disabled=false;
+}
+
 /* ── UTILS ── */
 function fmt(s){
-  if(!isFinite(s)||s==null)return'00:00.000';
-  const m=Math.floor(s/60),r=s%60;
+  if(s==null||!isFinite(s))return'00:00.000';
+  var m=Math.floor(s/60),r=(s%60);
   return String(m).padStart(2,'0')+':'+r.toFixed(3).padStart(6,'0');
 }
 function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
 
 /* ── STATE ── */
-let duration=0,inPt=0,outPt=0,zoom=1,moshMode='all';
-let ffmpegReady=false,processing=false;
-let ffRef=null,fetchFileRef=null;
-let videoObjectUrl=null,outputUrl=null;
-let isPlaying=false,dragging=null;
-let pps=50,filmCvsW=800;
-let tlFrames={};
-let captureAbortFlag=false;
+var duration=0,inPt=0,outPt=0,zoom=1,moshMode='all';
+var vidW=0,vidH=0;
+var ffReady=false,processing=false;
+var ffRef=null,fetchFileRef=null;
+var vidUrl=null,vidFile=null;
+var outputBlobs={}; // {label: Blob}
+var dragging=null;
+var pps=50; // pixels per second
+var tlW=800;
+var tlFrames={}; // key→objectURL
+var captureToken=0; // incremented to abort stale frame captures
+var filmDirty=true; // need full repaint of filmstrip canvas?
+
+/* Resolution steps */
+var RES_STEPS=[
+  {label:'320p', h:320},
+  {label:'480p', h:480},
+  {label:'720p', h:720},
+  {label:'1080p',h:1080},
+  {label:'1440p',h:1440}
+];
+var selectedRes='720p';
+var maxResH=720;
 
 /* ── DOM ── */
-const player=document.getElementById('player');
-const uploadZone=document.getElementById('uploadZone');
-const fileInput=document.getElementById('fileInput');
-const unloadBtn=document.getElementById('unloadBtn');
-const timecode=document.getElementById('timecode');
-const vinfoEl=document.getElementById('vinfo');
-const inVal=document.getElementById('inVal');
-const outVal=document.getElementById('outVal');
-const rangeDisp=document.getElementById('rangeDisp');
-const setInBtn=document.getElementById('setInBtn');
-const setOutBtn=document.getElementById('setOutBtn');
-const loadFfBtn=document.getElementById('loadFfBtn');
-const procBtn=document.getElementById('procBtn');
-const pbarTrack=document.getElementById('pbarTrack');
-const pbarFill=document.getElementById('pbarFill');
-const pLbl=document.getElementById('pLbl');
-const dlLink=document.getElementById('dlLink');
-const logWrap=document.getElementById('logWrap');
-const logPanel=document.getElementById('logPanel');
-const statusDot=document.getElementById('statusDot');
-const statusTxt=document.getElementById('statusTxt');
-const zoomSl=document.getElementById('zoomSl');
-const zoomVal=document.getElementById('zoomVal');
-const playBtn=document.getElementById('playBtn');
-const resetBtn=document.getElementById('resetBtn');
-const tlScroll=document.getElementById('tlScroll');
-const tlInner=document.getElementById('tlInner');
-const tlEmpty=document.getElementById('tlEmpty');
-const tlTime=document.getElementById('tlTime');
-const rulerCvs=document.getElementById('rulerCvs');
-const filmCvs=document.getElementById('filmCvs');
-const waveCvs=document.getElementById('waveCvs');
-const ffNotice=document.getElementById('ffNotice');
+var player     =document.getElementById('player');
+var dropZone   =document.getElementById('dropZone');
+var fileInput  =document.getElementById('fileInput');
+var vidClose   =document.getElementById('vidClose');
+var vidTc      =document.getElementById('vidTc');
+var vidInfo    =document.getElementById('vidInfo');
+var hdrFile    =document.getElementById('hdrFile');
+var inVal      =document.getElementById('inVal');
+var outVal     =document.getElementById('outVal');
+var cutInfo    =document.getElementById('cutInfo');
+var btnSetIn   =document.getElementById('btnSetIn');
+var btnSetOut  =document.getElementById('btnSetOut');
+var resGrid    =document.getElementById('resGrid');
+var btnLoad    =document.getElementById('btnLoad');
+var btnProcess =document.getElementById('btnProcess');
+var engineNotice=document.getElementById('engineNotice');
+var progTrack  =document.getElementById('progTrack');
+var progFill   =document.getElementById('progFill');
+var progLbl    =document.getElementById('progLbl');
+var dlSection  =document.getElementById('dlSection');
+var dlFormats  =document.getElementById('dlFormats');
+var logSec     =document.getElementById('logSec');
+var logWrap    =document.getElementById('logWrap');
+var statusPill =document.getElementById('statusPill');
+var statusTxt  =document.getElementById('statusTxt');
+var zoomRange  =document.getElementById('zoomRange');
+var zoomLbl    =document.getElementById('zoomLbl');
+var btnPlay    =document.getElementById('btnPlay');
+var btnReset   =document.getElementById('btnReset');
+var tlScroll   =document.getElementById('tlScroll');
+var tlInner    =document.getElementById('tlInner');
+var tlEmpty    =document.getElementById('tlEmpty');
+var tlTime     =document.getElementById('tlTime');
+var tlStack    =document.getElementById('tlStack');
+var rulerCvs   =document.getElementById('rulerCvs');
+var filmCvs    =document.getElementById('filmCvs');
+var overlayCvs =document.getElementById('overlayCvs');
+var waveCvs    =document.getElementById('waveCvs');
 
 /* ── STATUS ── */
-function setStatus(s,msg){
-  statusTxt.textContent=msg||s.toUpperCase();
-  statusDot.className='dot '+(s==='ready'||s==='done'?'on':s==='error'?'err':'off');
-  statusTxt.style.color=s==='done'?'var(--green)':s==='error'?'var(--red)':'var(--dim)';
+function setStatus(cls,msg){
+  statusPill.className='status-pill s-'+cls;
+  statusTxt.textContent=msg;
 }
 
-/* ── LOGGING ── */
+/* ── LOG ── */
 function log(msg,type){
   type=type||'ok';
-  logPanel.style.display='';
-  const d=document.createElement('div');
-  d.className='logline '+type;
-  d.textContent='> '+msg;
+  logSec.style.display='';
+  var d=document.createElement('div');
+  d.className='log-ln '+type;
+  d.textContent='› '+msg;
   logWrap.appendChild(d);
-  logWrap.scrollTop=9999;
+  logWrap.scrollTop=99999;
 }
 
+/* ── PROGRESS ── */
 function setProgress(p){
-  pbarTrack.style.display='';
-  pbarFill.style.width=p+'%';
-  pLbl.textContent=p+'% COMPLETE';
+  progTrack.style.display='';
+  progFill.style.width=p+'%';
+  progLbl.textContent=p+'%';
 }
 
-/* ── MARKERS ── */
+/* ── MARKERS UI ── */
 function updateMarkers(){
   inVal.textContent=fmt(inPt);
   outVal.textContent=fmt(outPt);
-  if(duration>0){
-    rangeDisp.style.display='';
-    rangeDisp.textContent='CLIP REMOVED: '+fmt(outPt-inPt)+' · MOSH ZONE';
+  if(duration>0&&outPt>inPt){
+    cutInfo.style.display='';
+    cutInfo.textContent='Removing '+fmt(outPt-inPt)+' from the timeline';
   }
-  drawOverlays();
-  updateProcBtn();
+  drawOverlay(); // only overlay, not full filmstrip
 }
 
-function updateProcBtn(){
-  procBtn.disabled=!(ffmpegReady&&duration>0&&outPt>inPt&&!processing);
+/* ── RES CHIPS ── */
+function buildResChips(){
+  // cap maxResH at 1440
+  var cap=Math.min(vidH,1440);
+  maxResH=cap;
+  // available steps: those <= cap
+  var available=RES_STEPS.filter(function(r){return r.h<=cap});
+  // ensure the cap is listed even if not a standard step
+  var hasCap=available.some(function(r){return r.h===cap});
+  if(!hasCap) available.push({label:cap+'p',h:cap});
+  available.sort(function(a,b){return a.h-b.h});
+
+  // default selection: highest available
+  selectedRes=available[available.length-1].label;
+
+  resGrid.innerHTML='';
+  available.forEach(function(r){
+    var c=document.createElement('div');
+    c.className='res-chip'+(r.label===selectedRes?' sel':'');
+    c.textContent=r.label;
+    c.dataset.h=r.h;
+    c.dataset.label=r.label;
+    c.addEventListener('click',function(){
+      document.querySelectorAll('.res-chip').forEach(function(x){x.classList.remove('sel')});
+      c.classList.add('sel');
+      selectedRes=r.label;
+    });
+    resGrid.appendChild(c);
+  });
 }
 
-/* ── VIDEO UPLOAD ── */
-uploadZone.addEventListener('click',function(){fileInput.click();});
-fileInput.addEventListener('change',function(e){loadVideo(e.target.files[0]);});
-uploadZone.addEventListener('dragover',function(e){e.preventDefault();uploadZone.classList.add('drag');});
-uploadZone.addEventListener('dragleave',function(){uploadZone.classList.remove('drag');});
-uploadZone.addEventListener('drop',function(e){
-  e.preventDefault();uploadZone.classList.remove('drag');
-  loadVideo(e.dataTransfer.files[0]);
+/* ── VIDEO LOAD ── */
+dropZone.addEventListener('click',function(){fileInput.click()});
+fileInput.addEventListener('change',function(e){loadVid(e.target.files[0])});
+dropZone.addEventListener('dragover',function(e){e.preventDefault();dropZone.classList.add('drag')});
+dropZone.addEventListener('dragleave',function(){dropZone.classList.remove('drag')});
+dropZone.addEventListener('drop',function(e){
+  e.preventDefault();dropZone.classList.remove('drag');
+  loadVid(e.dataTransfer.files[0]);
 });
 
-function loadVideo(file){
+function loadVid(file){
   if(!file||!file.type.startsWith('video/'))return;
-  if(videoObjectUrl)URL.revokeObjectURL(videoObjectUrl);
-  videoObjectUrl=URL.createObjectURL(file);
-  player.src=videoObjectUrl;
-  player._file=file;
+  if(vidUrl)URL.revokeObjectURL(vidUrl);
+  vidUrl=URL.createObjectURL(file);
+  vidFile=file;
+  player.src=vidUrl;
   player.style.display='block';
-  uploadZone.style.display='none';
-  timecode.style.display='';
-  vinfoEl.style.display='';
-  unloadBtn.style.display='';
-  outputUrl=null;
-  dlLink.style.display='none';
+  dropZone.style.display='none';
+  vidTc.style.display='block';
+  vidInfo.style.display='block';
+  vidClose.style.display='block';
+  hdrFile.textContent=file.name;
+  outputBlobs={};
+  dlSection.style.display='none';
   logWrap.innerHTML='';
-  logPanel.style.display='none';
+  logSec.style.display='none';
   log('Loaded: '+file.name+' ('+((file.size/1024/1024).toFixed(1))+'MB)');
-  setStatus('ready','READY');
+  setStatus('active','Ready');
 }
 
 player.addEventListener('loadedmetadata',function(){
   duration=player.duration;
+  vidW=player.videoWidth;
+  vidH=player.videoHeight;
   inPt=duration*0.25;
   outPt=duration*0.5;
-  vinfoEl.textContent=player.videoWidth+'×'+player.videoHeight+' · '+((player._file?player._file.size:0)/1024/1024).toFixed(1)+'MB';
+  vidInfo.textContent=vidW+'×'+vidH+'  ·  '+((vidFile?vidFile.size:0)/1024/1024).toFixed(1)+' MB';
+  buildResChips();
   updateMarkers();
   initTimeline();
-  log('Duration: '+fmt(duration)+' | '+player.videoWidth+'×'+player.videoHeight);
+  log('Duration: '+fmt(duration)+'  ·  '+vidW+'×'+vidH);
 });
 
 player.addEventListener('timeupdate',function(){
-  var t=player.currentTime;
-  timecode.textContent=fmt(t);
-  tlTime.textContent=fmt(t)+' / '+fmt(duration);
-  drawOverlays();
+  vidTc.textContent=fmt(player.currentTime);
+  tlTime.textContent=fmt(player.currentTime)+' / '+fmt(duration);
+  drawOverlay();
 });
+player.addEventListener('play',function(){btnPlay.className='tl-btn playing';btnPlay.textContent='⏸ Pause'});
+player.addEventListener('pause',function(){btnPlay.className='tl-btn';btnPlay.textContent='▶ Play'});
 
-player.addEventListener('play',function(){isPlaying=true;playBtn.className='tbtn playing';playBtn.textContent='⏸ PAUSE';});
-player.addEventListener('pause',function(){isPlaying=false;playBtn.className='tbtn';playBtn.textContent='▶ PLAY';});
-player.addEventListener('click',togglePlay);
-
-unloadBtn.addEventListener('click',function(){
+vidClose.addEventListener('click',function(){
   player.pause();player.src='';player.style.display='none';
-  uploadZone.style.display='';timecode.style.display='none';
-  vinfoEl.style.display='none';unloadBtn.style.display='none';
-  duration=0;inPt=0;outPt=0;
+  dropZone.style.display='';
+  vidTc.style.display='none';vidInfo.style.display='none';vidClose.style.display='none';
+  hdrFile.textContent='No file loaded';
+  duration=0;inPt=0;outPt=0;vidW=0;vidH=0;
   tlInner.style.display='none';tlEmpty.style.display='';
-  setStatus('idle','IDLE');
+  outputBlobs={};dlSection.style.display='none';
+  setStatus('idle','Idle');
 });
 
 /* ── TRANSPORT ── */
@@ -354,188 +609,220 @@ function togglePlay(){
   if(!duration)return;
   if(player.paused)player.play();else player.pause();
 }
-playBtn.addEventListener('click',togglePlay);
-resetBtn.addEventListener('click',function(){player.pause();player.currentTime=0;});
+btnPlay.addEventListener('click',togglePlay);
+btnReset.addEventListener('click',function(){player.pause();player.currentTime=0});
+player.addEventListener('click',togglePlay);
 
 /* ── IN/OUT ── */
-setInBtn.addEventListener('click',function(){inPt=clamp(player.currentTime,0,outPt-0.05);updateMarkers();});
-setOutBtn.addEventListener('click',function(){outPt=clamp(player.currentTime,inPt+0.05,duration);updateMarkers();});
+btnSetIn.addEventListener('click',function(){inPt=clamp(player.currentTime,0,outPt-0.05);updateMarkers()});
+btnSetOut.addEventListener('click',function(){outPt=clamp(player.currentTime,inPt+0.05,duration);updateMarkers()});
 
 /* ── MOSH MODE ── */
 document.querySelectorAll('.mopt').forEach(function(el){
   el.addEventListener('click',function(){
-    document.querySelectorAll('.mopt').forEach(function(e){e.classList.remove('sel');});
+    document.querySelectorAll('.mopt').forEach(function(e){e.classList.remove('sel')});
     el.classList.add('sel');
     moshMode=el.dataset.mode;
   });
 });
 
 /* ── ZOOM ── */
-zoomSl.addEventListener('input',function(){
-  zoom=parseFloat(zoomSl.value);
-  zoomVal.textContent=zoom.toFixed(1)+'×';
+zoomRange.addEventListener('input',function(){
+  zoom=parseFloat(zoomRange.value);
+  zoomLbl.textContent=zoom.toFixed(zoom%1===0?0:1)+'×';
   initTimeline();
 });
 
-/* ── TIMELINE ── */
+/* ────────────────────────────────────────────
+   TIMELINE
+─────────────────────────────────────────── */
 function calcPPS(){
-  var baseW=tlScroll.clientWidth||800;
-  return(baseW*zoom)/Math.max(1,duration);
+  var w=tlScroll.clientWidth||800;
+  return(w*zoom)/Math.max(1,duration);
 }
 
 function initTimeline(){
   if(!duration)return;
   pps=calcPPS();
-  filmCvsW=Math.max(tlScroll.clientWidth||800,Math.ceil(pps*duration)+4);
+  tlW=Math.max(tlScroll.clientWidth||800, Math.ceil(pps*duration)+4);
+
   tlEmpty.style.display='none';
   tlInner.style.display='';
-  rulerCvs.width=filmCvsW;
-  filmCvs.width=filmCvsW;
-  waveCvs.width=filmCvsW;
-  tlInner.style.width=filmCvsW+'px';
+  tlStack.style.width=tlW+'px';
+
+  rulerCvs.width=tlW; rulerCvs.style.width=tlW+'px';
+  filmCvs.width=tlW;  filmCvs.style.width=tlW+'px';
+  overlayCvs.width=tlW; overlayCvs.style.width=tlW+'px';
+  waveCvs.width=tlW;  waveCvs.style.width=tlW+'px';
+  tlInner.style.width=tlW+'px';
+
   drawRuler();
   drawWaveBase();
-  captureAbortFlag=true;
-  setTimeout(function(){captureAbortFlag=false;captureFrames();},50);
+  filmDirty=true;
+  captureToken++; // abort previous capture
+  var myToken=captureToken;
+  setTimeout(function(){
+    if(captureToken===myToken) captureFrames(myToken);
+  },30);
 }
 
+/* ── RULER ── */
 function drawRuler(){
   var ctx=rulerCvs.getContext('2d');
-  var W=rulerCvs.width,H=22;
+  var W=tlW,H=20;
   ctx.clearRect(0,0,W,H);
-  ctx.fillStyle='#111';ctx.fillRect(0,0,W,H);
-  var interval=1;
-  if(pps>200)interval=0.1;
-  else if(pps>80)interval=0.5;
-  else if(pps<15)interval=5;
-  else if(pps<30)interval=2;
-  ctx.font='8px IBM Plex Mono';
-  for(var t=0;t<=duration+interval;t+=interval){
+  ctx.fillStyle='#242424';ctx.fillRect(0,0,W,H);
+  var iv=1;
+  if(pps>200)iv=0.1;
+  else if(pps>80)iv=0.5;
+  else if(pps<15)iv=5;
+  else if(pps<35)iv=2;
+  ctx.font='9px JetBrains Mono, monospace';
+  for(var t=0;t<=duration+iv;t+=iv){
     var x=Math.round(t*pps);
-    var major=(Math.round(t/interval)%5===0)||interval>=1;
-    ctx.strokeStyle=major?'#333':'#222';
+    var major=(Math.round(t/iv)%5===0)||iv>=1;
+    ctx.strokeStyle=major?'#444':'#2e2e2e';
     ctx.lineWidth=1;
-    ctx.beginPath();ctx.moveTo(x,H);ctx.lineTo(x,H-(major?11:5));ctx.stroke();
-    if(major){ctx.fillStyle='#555';ctx.fillText(fmt(t),x+2,H-12);}
+    ctx.beginPath();ctx.moveTo(x,H);ctx.lineTo(x,H-(major?10:5));ctx.stroke();
+    if(major){ctx.fillStyle='#666';ctx.fillText(fmt(t),x+2,H-11);}
   }
 }
 
+/* ── WAVEFORM (decorative) ── */
 function drawWaveBase(){
   var ctx=waveCvs.getContext('2d');
-  var W=waveCvs.width,H=28;
+  var W=tlW,H=22;
   ctx.clearRect(0,0,W,H);
-  ctx.fillStyle='#111';ctx.fillRect(0,0,W,H);
-  ctx.fillStyle='rgba(0,229,255,0.18)';
+  ctx.fillStyle='#1a1a1a';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='rgba(59,130,246,0.18)';
   for(var x=0;x<W;x+=3){
-    var h=(Math.sin(x*0.13)*0.3+Math.sin(x*0.07)*0.2+0.3+Math.random()*0.2)*H*0.8;
+    var h=(Math.sin(x*0.11)*0.25+Math.sin(x*0.05)*0.15+0.25+Math.random()*0.15)*H*0.85;
     ctx.fillRect(x,H/2-h/2,2,h);
   }
 }
 
-function captureFrames(){
-  if(!videoObjectUrl||!duration)return;
+/* ── FILMSTRIP FRAME CAPTURE ── */
+function captureFrames(myToken){
+  if(!vidUrl||!duration)return;
   tlFrames={};
-  var interval=pps>200?0.1:pps>80?0.25:pps>30?0.5:1;
-  var thumbW=Math.max(20,Math.ceil(interval*pps));
-  var thumbH=60;
-  var total=Math.ceil(duration/interval);
-  var i=0;
-  var tmpVid=document.createElement('video');
-  tmpVid.src=videoObjectUrl;
-  tmpVid.muted=true;
-  var tmpCvs=document.createElement('canvas');
-  tmpCvs.width=thumbW;tmpCvs.height=thumbH;
-  var tCtx=tmpCvs.getContext('2d');
-  var aborted=false;
+  filmDirty=true;
 
-  tmpVid.addEventListener('seeked',function(){
-    if(aborted||captureAbortFlag){aborted=true;return;}
-    tCtx.drawImage(tmpVid,0,0,thumbW,thumbH);
-    var key=(i*interval).toFixed(3);
+  // Clear filmstrip while loading
+  var ctx=filmCvs.getContext('2d');
+  ctx.fillStyle='#0d0d0d';ctx.fillRect(0,0,filmCvs.width,64);
+
+  var iv=pps>200?0.1:pps>80?0.25:pps>30?0.5:1;
+  var tw=Math.max(20,Math.ceil(iv*pps));
+  var total=Math.ceil(duration/iv);
+  var i=0;
+  var tmpV=document.createElement('video');
+  tmpV.src=vidUrl;tmpV.muted=true;
+  var tmpC=document.createElement('canvas');
+  tmpC.width=tw;tmpC.height=64;
+  var tCtx=tmpC.getContext('2d');
+
+  tmpV.addEventListener('seeked',function(){
+    if(captureToken!==myToken)return;
+    tCtx.drawImage(tmpV,0,0,tw,64);
+    var key=(i*iv).toFixed(3);
     (function(k){
-      tmpCvs.toBlob(function(blob){
-        if(aborted||captureAbortFlag||!blob)return;
+      tmpC.toBlob(function(blob){
+        if(captureToken!==myToken||!blob)return;
         if(tlFrames[k])URL.revokeObjectURL(tlFrames[k]);
         tlFrames[k]=URL.createObjectURL(blob);
-        paintFrames();
+        filmDirty=true;
+        paintFilmstrip(function(){drawOverlay()});
       },'image/jpeg',0.65);
     })(key);
     i++;
-    if(i<=total)setTimeout(function(){if(!aborted&&!captureAbortFlag)tmpVid.currentTime=i*interval;},6);
+    if(i<=total){
+      setTimeout(function(){
+        if(captureToken===myToken)tmpV.currentTime=i*iv;
+      },5);
+    }
   });
-
-  tmpVid.addEventListener('error',function(){});
-  tmpVid.load();
-  tmpVid.currentTime=0;
+  tmpV.addEventListener('error',function(){});
+  tmpV.load();tmpV.currentTime=0;
 }
 
-function paintFrames(){
+/* ── PAINT FILMSTRIP (once per frame batch, expensive) ── */
+function paintFilmstrip(cb){
   var ctx=filmCvs.getContext('2d');
-  var W=filmCvs.width,H=60;
-  ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
-  var interval=pps>200?0.1:pps>80?0.25:pps>30?0.5:1;
-  var thumbW=Math.max(20,Math.ceil(interval*pps));
-  var keys=Object.keys(tlFrames).sort(function(a,b){return parseFloat(a)-parseFloat(b);});
-  var pending=keys.length;
-  if(pending===0){drawOverlays();return;}
+  var W=filmCvs.width,H=64;
+  ctx.fillStyle='#0d0d0d';ctx.fillRect(0,0,W,H);
+
+  var iv=pps>200?0.1:pps>80?0.25:pps>30?0.5:1;
+  var tw=Math.max(20,Math.ceil(iv*pps));
+  var keys=Object.keys(tlFrames).sort(function(a,b){return parseFloat(a)-parseFloat(b)});
+  if(keys.length===0){if(cb)cb();return}
+
+  var done=0,total=keys.length;
   keys.forEach(function(key){
     var t=parseFloat(key),x=Math.round(t*pps);
     var img=new Image();
     img.onload=function(){
-      ctx.drawImage(img,x,0,thumbW,H);
-      ctx.strokeStyle='rgba(0,0,0,0.4)';ctx.lineWidth=1;
-      ctx.strokeRect(x,0,thumbW,H);
-      pending--;
-      if(pending<=0)drawOverlays();
+      ctx.drawImage(img,x,0,tw,H);
+      ctx.strokeStyle='rgba(0,0,0,0.35)';ctx.lineWidth=1;ctx.strokeRect(x,0,tw,H);
+      done++;if(done>=total&&cb)cb();
     };
-    img.onerror=function(){pending--;if(pending<=0)drawOverlays();};
+    img.onerror=function(){done++;if(done>=total&&cb)cb()};
     img.src=tlFrames[key];
   });
 }
 
-function drawOverlays(){
+/* ── DRAW OVERLAY (cheap, runs every frame) ── */
+function drawOverlay(){
   if(!duration)return;
-  var ctx=filmCvs.getContext('2d');
-  var H=60;
-  var inX=Math.round(inPt*pps),outX=Math.round(outPt*pps),phX=Math.round(player.currentTime*pps);
+  var ctx=overlayCvs.getContext('2d');
+  var W=overlayCvs.width,H=64;
+  ctx.clearRect(0,0,W,H); // ← THIS is the fix: fully clears old positions every frame
 
-  // Mosh region
-  ctx.fillStyle='rgba(255,32,32,0.1)';
+  var inX=Math.round(inPt*pps);
+  var outX=Math.round(outPt*pps);
+  var phX=Math.round(player.currentTime*pps);
+
+  // Mosh region fill
+  ctx.fillStyle='rgba(245,158,11,0.1)';
   ctx.fillRect(inX,0,Math.max(0,outX-inX),H);
 
-  // IN handle
-  ctx.fillStyle='rgba(0,229,255,0.6)';
-  ctx.fillRect(inX-1,0,3,H);
-  ctx.fillStyle='#00e5ff';
-  ctx.font='bold 8px IBM Plex Mono';
-  ctx.fillText('IN',inX+4,11);
+  // IN handle bar
+  ctx.fillStyle='rgba(6,182,212,0.85)';
+  ctx.fillRect(inX-1,0,2,H);
+  // IN triangle top
+  ctx.fillStyle='#06b6d4';
+  ctx.beginPath();ctx.moveTo(inX-6,0);ctx.lineTo(inX+6,0);ctx.lineTo(inX,8);ctx.fill();
+  // IN label
+  ctx.font='bold 9px DM Sans,sans-serif';ctx.fillStyle='#06b6d4';
+  ctx.fillText('IN',inX+4,13);
 
-  // OUT handle
-  ctx.fillStyle='rgba(255,179,0,0.6)';
-  ctx.fillRect(outX-1,0,3,H);
-  ctx.fillStyle='#ffb300';
-  ctx.fillText('OUT',outX+4,11);
+  // OUT handle bar
+  ctx.fillStyle='rgba(245,158,11,0.85)';
+  ctx.fillRect(outX-1,0,2,H);
+  // OUT triangle top
+  ctx.fillStyle='#f59e0b';
+  ctx.beginPath();ctx.moveTo(outX-6,0);ctx.lineTo(outX+6,0);ctx.lineTo(outX,8);ctx.fill();
+  ctx.font='bold 9px DM Sans,sans-serif';ctx.fillStyle='#f59e0b';
+  ctx.fillText('OUT',outX+4,13);
 
   // Playhead
-  ctx.fillStyle='rgba(255,32,32,0.9)';
+  ctx.fillStyle='rgba(239,68,68,0.9)';
   ctx.fillRect(phX-1,0,2,H);
-  ctx.fillStyle='#ff2020';
-  ctx.beginPath();ctx.moveTo(phX-5,0);ctx.lineTo(phX+5,0);ctx.lineTo(phX,9);ctx.fill();
+  ctx.fillStyle='#ef4444';
+  ctx.beginPath();ctx.moveTo(phX-5,0);ctx.lineTo(phX+5,0);ctx.lineTo(phX,8);ctx.fill();
 
-  // Waveform overlays
+  // Also overlay on wave canvas
   var wCtx=waveCvs.getContext('2d');
-  var wH=28;
   drawWaveBase();
-  wCtx.fillStyle='rgba(255,32,32,0.12)';
-  wCtx.fillRect(inX,0,Math.max(0,outX-inX),wH);
-  wCtx.fillStyle='rgba(255,32,32,0.85)';
-  wCtx.fillRect(phX-1,0,2,wH);
+  wCtx.fillStyle='rgba(245,158,11,0.1)';
+  wCtx.fillRect(inX,0,Math.max(0,outX-inX),22);
+  wCtx.fillStyle='rgba(239,68,68,0.8)';
+  wCtx.fillRect(phX-1,0,2,22);
 }
 
-/* ── TIMELINE INTERACTION ── */
+/* ── TIMELINE MOUSE ── */
 function tlGetX(e){
-  var rect=tlScroll.getBoundingClientRect();
-  return e.clientX-rect.left+tlScroll.scrollLeft;
+  var r=tlScroll.getBoundingClientRect();
+  return e.clientX-r.left+tlScroll.scrollLeft;
 }
 
 tlScroll.addEventListener('mousedown',function(e){
@@ -543,113 +830,134 @@ tlScroll.addEventListener('mousedown',function(e){
   var x=tlGetX(e);
   var t=clamp(x/pps,0,duration);
   var THRESH=10;
-  if(Math.abs(x-inPt*pps)<THRESH)dragging='in';
-  else if(Math.abs(x-outPt*pps)<THRESH)dragging='out';
+  var inX=inPt*pps,outX=outPt*pps;
+  if(Math.abs(x-inX)<THRESH)       dragging='in';
+  else if(Math.abs(x-outX)<THRESH) dragging='out';
   else{dragging='playhead';player.currentTime=t;}
   e.preventDefault();
 });
 
 window.addEventListener('mousemove',function(e){
   if(!dragging||!duration)return;
-  var rect=tlScroll.getBoundingClientRect();
-  var x=e.clientX-rect.left+tlScroll.scrollLeft;
+  var r=tlScroll.getBoundingClientRect();
+  var x=e.clientX-r.left+tlScroll.scrollLeft;
   var t=clamp(x/pps,0,duration);
-  if(dragging==='playhead')player.currentTime=t;
-  else if(dragging==='in'){inPt=clamp(t,0,outPt-0.05);updateMarkers();}
-  else if(dragging==='out'){outPt=clamp(t,inPt+0.05,duration);updateMarkers();}
+  if(dragging==='playhead')      player.currentTime=t;
+  else if(dragging==='in')  {inPt=clamp(t,0,outPt-0.05);updateMarkers();}
+  else if(dragging==='out') {outPt=clamp(t,inPt+0.05,duration);updateMarkers();}
 });
-
-window.addEventListener('mouseup',function(){dragging=null;});
+window.addEventListener('mouseup',function(){dragging=null});
 
 /* ── I-FRAME STRIP ── */
 function stripIFrames(buffer,mode){
-  var bytes=new Uint8Array(buffer);
-  var count=0,stripped=0;
-  for(var i=0;i<bytes.length-5;i++){
-    if(bytes[i]===0x00&&bytes[i+1]===0x00&&bytes[i+2]===0x01&&bytes[i+3]===0xB6){
-      var vopType=(bytes[i+4]>>6)&0x03;
-      if(vopType===0){
-        count++;
-        if(mode==='all'||(mode==='keep_first'&&count>1)){
-          bytes[i+4]=(bytes[i+4]&0x3F)|0x40;
-          stripped++;
+  var b=new Uint8Array(buffer),found=0,stripped=0;
+  for(var i=0;i<b.length-5;i++){
+    if(b[i]===0x00&&b[i+1]===0x00&&b[i+2]===0x01&&b[i+3]===0xB6){
+      var vt=(b[i+4]>>6)&3;
+      if(vt===0){
+        found++;
+        if(mode==='all'||(mode==='keep_first'&&found>1)){
+          b[i+4]=(b[i+4]&0x3F)|0x40; stripped++;
         }
       }
     }
   }
-  log('I-frame scan: found '+count+', stripped '+stripped);
-  return bytes.buffer;
+  log('I-frames found: '+found+', stripped: '+stripped);
+  return b.buffer;
 }
 
-/* ── LOAD FFMPEG ── */
-loadFfBtn.addEventListener('click',function(){
-  loadFfBtn.disabled=true;
-  loadFfBtn.textContent='LOADING WASM...';
-  setStatus('loading','LOADING WASM');
-  log('Initializing ffmpeg.wasm...','warn');
+/* ── LOAD FFMPEG ENGINE ── */
+btnLoad.addEventListener('click',function(){
+  if(typeof FFmpeg==='undefined'){
+    log('FFmpeg library not available. Check internet connection.','err');
+    return;
+  }
+  btnLoad.disabled=true;
+  btnLoad.textContent='Loading…';
+  setStatus('active','Loading engine');
+  log('Loading ffmpeg.wasm engine…','warn');
 
-  var ff=FFmpeg.createFFmpeg({
-    corePath:'https://unpkg.com/@ffmpeg/core-st@0.11.1/dist/ffmpeg-core.js',
-    log:false,
-    progress:function(p){setProgress(Math.round(p.ratio*100));},
-    logger:function(o){
-      if(o.message&&(o.message.indexOf('frame=')!==-1||o.message.indexOf('time=')!==-1))
-        log(o.message.slice(0,80));
-    }
-  });
+  var ff;
+  try{
+    ff=FFmpeg.createFFmpeg({
+      corePath:'https://cdn.jsdelivr.net/npm/@ffmpeg/core-st@0.11.1/dist/ffmpeg-core.js',
+      log:false,
+      progress:function(p){setProgress(Math.round((p.ratio||0)*100))},
+      logger:function(o){
+        var m=o.message||'';
+        if(m.indexOf('frame=')!==-1||m.indexOf('Overwrite?')!==-1)log(m.slice(0,80));
+      }
+    });
+  }catch(e){
+    log('createFFmpeg error: '+e.message,'err');
+    btnLoad.disabled=false;btnLoad.textContent='Retry';
+    return;
+  }
 
   ff.load().then(function(){
     ffRef=ff;
     fetchFileRef=FFmpeg.fetchFile;
-    ffmpegReady=true;
-    loadFfBtn.style.display='none';
-    ffNotice.style.display='none';
-    setStatus('ready','READY');
-    log('ffmpeg.wasm loaded ✓','ok');
+    ffReady=true;
+    btnLoad.style.display='none';
+    engineNotice.style.display='none';
+    setStatus('active','Engine ready');
+    log('Engine loaded ✓','ok');
     updateProcBtn();
   }).catch(function(e){
-    loadFfBtn.disabled=false;
-    loadFfBtn.textContent='RETRY LOAD';
-    setStatus('error','LOAD FAILED');
-    log('Error: '+e.message,'err');
+    log('Engine load failed: '+e.message,'err');
+    setStatus('error','Load failed');
+    btnLoad.disabled=false;
+    btnLoad.textContent='Retry';
   });
 });
 
-/* ── PROCESS ── */
-procBtn.addEventListener('click',runDatamosh);
+function updateProcBtn(){
+  btnProcess.disabled=!(ffReady&&duration>0&&outPt>inPt&&!processing);
+}
 
-async function runDatamosh(){
-  if(!ffRef||!player._file||processing)return;
+/* ── PROCESS ── */
+btnProcess.addEventListener('click',runProcess);
+
+async function runProcess(){
+  if(!ffRef||!vidFile||processing)return;
   processing=true;
-  procBtn.classList.add('running');
-  procBtn.disabled=true;
-  procBtn.textContent='MOSHING...';
-  dlLink.style.display='none';
+  btnProcess.classList.add('running');
+  btnProcess.disabled=true;
+  btnProcess.textContent='Processing…';
+  dlSection.style.display='none';
+  outputBlobs={};
   setProgress(0);
-  setStatus('processing','PROCESSING');
+  setStatus('active','Processing');
   logWrap.innerHTML='';
 
   var ff=ffRef,fetchFile=fetchFileRef;
 
   try{
-    log('Writing input file...','warn');
-    ff.FS('writeFile','input',await fetchFile(player._file));
+    // Write input
+    log('Writing input file…','warn');
+    ff.FS('writeFile','input',await fetchFile(vidFile));
 
-    log('[1/5] Encoding Clip A (0 → '+fmt(inPt)+')...','warn');
-    await ff.run('-i','input','-t',inPt.toFixed(3),'-c:v','mpeg4','-bf','0','-q:v','3','-an','clip_a.avi');
+    // Clip A
+    log('[1/5] Encoding Clip A (0 → '+fmt(inPt)+')…','warn');
+    await ff.run('-i','input','-t',inPt.toFixed(3),
+      '-c:v','mpeg4','-bf','0','-q:v','3','-an','clip_a.avi');
     setProgress(18);log('Clip A done ✓','ok');
 
-    log('[2/5] Encoding Clip B ('+fmt(outPt)+' → end)...','warn');
-    await ff.run('-i','input','-ss',outPt.toFixed(3),'-c:v','mpeg4','-bf','0','-g','9999','-keyint_min','9999','-q:v','3','-an','clip_b.avi');
+    // Clip B
+    log('[2/5] Encoding Clip B ('+fmt(outPt)+' → end)…','warn');
+    await ff.run('-i','input','-ss',outPt.toFixed(3),
+      '-c:v','mpeg4','-bf','0','-g','9999','-keyint_min','9999','-q:v','3','-an','clip_b.avi');
     setProgress(36);log('Clip B done ✓','ok');
 
-    log('[3/5] Stripping I-frames (mode: '+moshMode+')...','warn');
+    // Strip I-frames
+    log('[3/5] Stripping I-frames ('+moshMode+')…','warn');
     var raw=ff.FS('readFile','clip_b.avi');
     var moshed=stripIFrames(raw.buffer,moshMode);
     ff.FS('writeFile','clip_b_moshed.avi',new Uint8Array(moshed));
-    setProgress(52);log('I-frames stripped ✓','ok');
+    setProgress(50);log('I-frames stripped ✓','ok');
 
-    log('[4/5] Processing audio...','warn');
+    // Audio
+    log('[4/5] Processing audio…','warn');
     var hasAudio=true;
     try{
       await ff.run('-i','input','-t',inPt.toFixed(3),'-vn','-c:a','copy','audio_a.aac');
@@ -657,54 +965,99 @@ async function runDatamosh(){
       ff.FS('writeFile','audio_concat.txt',"file 'audio_a.aac'\nfile 'audio_b.aac'");
       await ff.run('-f','concat','-safe','0','-i','audio_concat.txt','-c:a','aac','audio_merged.aac');
       log('Audio merged ✓','ok');
-    }catch(e){hasAudio=false;log('No audio track — video only','warn');}
-    setProgress(64);
+    }catch(e){hasAudio=false;log('No audio track — video only','warn')}
+    setProgress(62);
 
-    log('[5/5] Concatenating + encoding WebM...','warn');
+    // Concat video
+    log('[5/5] Concatenating clips…','warn');
     ff.FS('writeFile','video_concat.txt',"file 'clip_a.avi'\nfile 'clip_b_moshed.avi'");
     await ff.run('-f','concat','-safe','0','-i','video_concat.txt','-c','copy','merged_video.avi');
-    setProgress(78);
+    setProgress(72);
 
-    var args=['-i','merged_video.avi'];
-    if(hasAudio)args.push('-i','audio_merged.aac','-map','0:v','-map','1:a');
-    args.push('-c:v','libvpx','-crf','12','-b:v','2M','-c:a','libvorbis','-q:a','4','output.webm');
-    await ff.run.apply(ff,args);
-    setProgress(95);
+    // Figure out selected target height
+    var selChip=document.querySelector('.res-chip.sel');
+    var targetH=selChip?parseInt(selChip.dataset.h):Math.min(vidH,1440);
+    var availSteps=RES_STEPS.filter(function(r){return r.h<=Math.min(vidH,1440)});
+    // also add the exact cap
+    if(!availSteps.some(function(r){return r.h===Math.min(vidH,1440)}))
+      availSteps.push({label:Math.min(vidH,1440)+'p',h:Math.min(vidH,1440)});
+    availSteps.sort(function(a,b){return a.h-b.h});
 
-    var result=ff.FS('readFile','output.webm');
-    var blob=new Blob([result.buffer],{type:'video/webm'});
-    if(outputUrl)URL.revokeObjectURL(outputUrl);
-    outputUrl=URL.createObjectURL(blob);
+    // Encode each resolution
+    log('Encoding export variants…','warn');
+    var stepCount=availSteps.length,si=0;
+    var baseArgs=hasAudio
+      ? ['-i','merged_video.avi','-i','audio_merged.aac','-map','0:v','-map','1:a','-c:a','libvorbis','-q:a','4']
+      : ['-i','merged_video.avi'];
 
-    dlLink.href=outputUrl;
-    dlLink.download='datamosh_output.webm';
-    dlLink.className='dl-btn';
-    dlLink.textContent='↓ DOWNLOAD WEBM';
-    dlLink.style.display='block';
+    for(var ri=0;ri<availSteps.length;ri++){
+      var step=availSteps[ri];
+      var outName='out_'+step.h+'.webm';
+      // scale keeping aspect, divisible by 2
+      var scaleFilter='scale=-2:'+step.h;
+      var args=baseArgs.slice();
+      args.push('-c:v','libvpx','-crf','18','-b:v','0');
+      args.push('-vf',scaleFilter);
+      args.push(outName);
+      await ff.run.apply(ff,args);
+      var resultData=ff.FS('readFile',outName);
+      outputBlobs[step.label]=new Blob([resultData.buffer],{type:'video/webm'});
+      try{ff.FS('unlink',outName)}catch(e){}
+      si++;
+      setProgress(72+Math.round((si/stepCount)*26));
+      log('Encoded '+step.label+' ✓','ok');
+    }
 
     setProgress(100);
-    setStatus('done','DONE ✓');
-    log('✓ COMPLETE — '+(blob.size/1024/1024).toFixed(2)+'MB','ok');
+    setStatus('active','Done');
+    log('All variants ready ✓','ok');
+    buildDownloadUI(availSteps);
 
+    // Cleanup
     ['input','clip_a.avi','clip_b.avi','clip_b_moshed.avi',
      'audio_a.aac','audio_b.aac','audio_concat.txt','audio_merged.aac',
-     'video_concat.txt','merged_video.avi','output.webm'].forEach(function(f){
-      try{ff.FS('unlink',f);}catch(e){}
-    });
+     'video_concat.txt','merged_video.avi'].forEach(function(f){try{ff.FS('unlink',f)}catch(e){}});
 
   }catch(e){
-    log('ERROR: '+e.message,'err');
-    setStatus('error','ERROR');
+    log('Error: '+e.message,'err');
+    setStatus('error','Error');
   }
 
   processing=false;
-  procBtn.classList.remove('running');
-  procBtn.textContent='EXECUTE DATAMOSH';
+  btnProcess.classList.remove('running');
+  btnProcess.textContent='Process & Render';
   updateProcBtn();
 }
 
+/* ── BUILD DOWNLOAD UI ── */
+function buildDownloadUI(steps){
+  dlFormats.innerHTML='';
+  steps.slice().reverse().forEach(function(step){
+    var blob=outputBlobs[step.label];
+    if(!blob)return;
+    var url=URL.createObjectURL(blob);
+    var row=document.createElement('div');
+    row.className='dl-row';
+    var left=document.createElement('div');
+    var name=document.createElement('div');
+    name.className='dl-res-name';
+    name.textContent=step.label;
+    var sub=document.createElement('div');
+    sub.className='dl-res-sub';
+    sub.textContent=(blob.size/1024/1024).toFixed(1)+' MB · WebM';
+    left.appendChild(name);left.appendChild(sub);
+    var a=document.createElement('a');
+    a.href=url;a.download='datamosh_'+step.label+'.webm';
+    a.className='btn-dl';a.textContent='Download';
+    row.appendChild(left);row.appendChild(a);
+    dlFormats.appendChild(row);
+  });
+  dlSection.style.display='';
+}
+
 /* ── INIT ── */
-setStatus('idle','IDLE');
+setStatus('idle','Idle');
+updateProcBtn();
 </script>
 </body>
 </html>
