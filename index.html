@@ -390,18 +390,19 @@ input[type=file]{display:none}
 
 </div>
 
-<!-- FFmpeg 0.11.6 — unpkg is the canonical host for this package -->
-<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js" onerror="ffScriptFailed()"></script>
+<script>
+function ffScriptFailed(){
+  document.addEventListener('DOMContentLoaded',function(){
+    var n=document.getElementById('engineNotice');
+    if(n)n.innerHTML='<span style="color:#ef4444">⚠ FFmpeg script failed to load. Check your internet connection and reload the page.</span>';
+    var b=document.getElementById('btnLoad');
+    if(b){b.textContent='Reload page to retry';b.disabled=true;}
+  });
+}
+</script>
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.9.8/dist/ffmpeg.min.js" onerror="ffScriptFailed()"></script>
 <script>
 'use strict';
-
-/* ── FFmpeg script load failure ── */
-function ffScriptFailed(){
-  log('FFmpeg script failed to load from CDN. Check your internet connection.','err');
-  setStatus('error','Engine load failed');
-  btnLoad.textContent='Retry';
-  btnLoad.disabled=false;
-}
 
 /* ── UTILS ── */
 function fmt(s){
@@ -877,11 +878,10 @@ btnLoad.addEventListener('click',function(){
   setStatus('active','Loading engine');
   log('Loading ffmpeg.wasm engine…','warn');
 
-  // Try multiple CDN sources in sequence — version MUST match exactly:
-  // ffmpeg@0.11.6 wrapper requires core-st@0.11.1 (single-threaded, no SharedArrayBuffer needed)
+  // @ffmpeg/ffmpeg@0.9.8 + core@0.9.8 — proven working combo, no SharedArrayBuffer needed
   var CORE_URLS=[
-    'https://unpkg.com/@ffmpeg/core-st@0.11.1/dist/ffmpeg-core.js',
-    'https://cdn.jsdelivr.net/npm/@ffmpeg/core-st@0.11.1/dist/ffmpeg-core.js',
+    'https://unpkg.com/@ffmpeg/core@0.9.8/dist/ffmpeg-core.js',
+    'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.9.8/dist/ffmpeg-core.js',
   ];
   var coreIdx=0;
 
@@ -889,13 +889,18 @@ btnLoad.addEventListener('click',function(){
     log('Trying core: '+coreUrl.split('/').slice(-3).join('/'),'warn');
     var ff;
     try{
-      ff=FFmpeg.createFFmpeg({
+      // 0.9.x API: FFmpeg.createFFmpeg (global), not FFmpeg.default
+      var createFF = (typeof FFmpeg !== 'undefined' && FFmpeg.createFFmpeg)
+        ? FFmpeg.createFFmpeg
+        : (typeof createFFmpeg !== 'undefined' ? createFFmpeg : null);
+      if(!createFF){ log('FFmpeg global not found','err'); return; }
+      ff=createFF({
         corePath:coreUrl,
         log:false,
         progress:function(p){setProgress(Math.round((p.ratio||0)*100))},
         logger:function(o){
           var m=o.message||'';
-          if(m.indexOf('frame=')!==-1||m.indexOf('Overwrite?')!==-1)log(m.slice(0,80));
+          if(m.indexOf('frame=')!==-1)log(m.slice(0,80));
         }
       });
     }catch(e){
@@ -904,15 +909,18 @@ btnLoad.addEventListener('click',function(){
     }
     ff.load().then(function(){
       ffRef=ff;
-      fetchFileRef=FFmpeg.fetchFile;
+      // 0.9.x: fetchFile is on FFmpeg global or window.fetchFile
+      fetchFileRef = (typeof FFmpeg !== 'undefined' && FFmpeg.fetchFile)
+        ? FFmpeg.fetchFile
+        : (typeof fetchFile !== 'undefined' ? fetchFile : null);
       ffReady=true;
       btnLoad.style.display='none';
       engineNotice.style.display='none';
       setStatus('active','Engine ready');
-      log('Engine loaded ✓  (core: '+coreUrl.split('/').slice(-3).join('/')+')', 'ok');
+      log('Engine loaded ✓','ok');
       updateProcBtn();
     }).catch(function(e){
-      log('Core failed ('+e.message.slice(0,60)+')','warn');
+      log('Core failed: '+e.message.slice(0,80),'warn');
       tryNextOrFail(e.message);
     });
   }
@@ -922,7 +930,7 @@ btnLoad.addEventListener('click',function(){
     if(coreIdx<CORE_URLS.length){
       tryLoad(CORE_URLS[coreIdx]);
     }else{
-      log('All CDN sources failed. Last error: '+lastErr,'err');
+      log('All CDN sources failed. Last: '+lastErr.slice(0,80),'err');
       setStatus('error','Load failed');
       btnLoad.disabled=false;
       btnLoad.textContent='Retry';
@@ -952,6 +960,11 @@ async function runProcess(){
   logWrap.innerHTML='';
 
   var ff=ffRef,fetchFile=fetchFileRef;
+  if(!fetchFile){
+    // 0.9.x fallback: fetchFile is a global
+    fetchFile = window.fetchFile || (FFmpeg && FFmpeg.fetchFile);
+  }
+  if(!fetchFile){ log('fetchFile not available','err'); processing=false; return; }
 
   try{
     // Write input
