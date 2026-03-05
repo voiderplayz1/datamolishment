@@ -390,8 +390,8 @@ input[type=file]{display:none}
 
 </div>
 
-<!-- FFmpeg loaded from jsDelivr (most reliable public CDN) -->
-<script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js" onerror="ffScriptFailed()"></script>
+<!-- FFmpeg 0.11.6 — unpkg is the canonical host for this package -->
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js" onerror="ffScriptFailed()"></script>
 <script>
 'use strict';
 
@@ -877,38 +877,59 @@ btnLoad.addEventListener('click',function(){
   setStatus('active','Loading engine');
   log('Loading ffmpeg.wasm engine…','warn');
 
-  var ff;
-  try{
-    ff=FFmpeg.createFFmpeg({
-      corePath:'https://cdn.jsdelivr.net/npm/@ffmpeg/core-st@0.11.1/dist/ffmpeg-core.js',
-      log:false,
-      progress:function(p){setProgress(Math.round((p.ratio||0)*100))},
-      logger:function(o){
-        var m=o.message||'';
-        if(m.indexOf('frame=')!==-1||m.indexOf('Overwrite?')!==-1)log(m.slice(0,80));
-      }
+  // Try multiple CDN sources in sequence — version MUST match exactly:
+  // ffmpeg@0.11.6 wrapper requires core-st@0.11.1 (single-threaded, no SharedArrayBuffer needed)
+  var CORE_URLS=[
+    'https://unpkg.com/@ffmpeg/core-st@0.11.1/dist/ffmpeg-core.js',
+    'https://cdn.jsdelivr.net/npm/@ffmpeg/core-st@0.11.1/dist/ffmpeg-core.js',
+  ];
+  var coreIdx=0;
+
+  function tryLoad(coreUrl){
+    log('Trying core: '+coreUrl.split('/').slice(-3).join('/'),'warn');
+    var ff;
+    try{
+      ff=FFmpeg.createFFmpeg({
+        corePath:coreUrl,
+        log:false,
+        progress:function(p){setProgress(Math.round((p.ratio||0)*100))},
+        logger:function(o){
+          var m=o.message||'';
+          if(m.indexOf('frame=')!==-1||m.indexOf('Overwrite?')!==-1)log(m.slice(0,80));
+        }
+      });
+    }catch(e){
+      log('createFFmpeg error: '+e.message,'err');
+      tryNextOrFail(e.message);return;
+    }
+    ff.load().then(function(){
+      ffRef=ff;
+      fetchFileRef=FFmpeg.fetchFile;
+      ffReady=true;
+      btnLoad.style.display='none';
+      engineNotice.style.display='none';
+      setStatus('active','Engine ready');
+      log('Engine loaded ✓  (core: '+coreUrl.split('/').slice(-3).join('/')+')', 'ok');
+      updateProcBtn();
+    }).catch(function(e){
+      log('Core failed ('+e.message.slice(0,60)+')','warn');
+      tryNextOrFail(e.message);
     });
-  }catch(e){
-    log('createFFmpeg error: '+e.message,'err');
-    btnLoad.disabled=false;btnLoad.textContent='Retry';
-    return;
   }
 
-  ff.load().then(function(){
-    ffRef=ff;
-    fetchFileRef=FFmpeg.fetchFile;
-    ffReady=true;
-    btnLoad.style.display='none';
-    engineNotice.style.display='none';
-    setStatus('active','Engine ready');
-    log('Engine loaded ✓','ok');
-    updateProcBtn();
-  }).catch(function(e){
-    log('Engine load failed: '+e.message,'err');
-    setStatus('error','Load failed');
-    btnLoad.disabled=false;
-    btnLoad.textContent='Retry';
-  });
+  function tryNextOrFail(lastErr){
+    coreIdx++;
+    if(coreIdx<CORE_URLS.length){
+      tryLoad(CORE_URLS[coreIdx]);
+    }else{
+      log('All CDN sources failed. Last error: '+lastErr,'err');
+      setStatus('error','Load failed');
+      btnLoad.disabled=false;
+      btnLoad.textContent='Retry';
+    }
+  }
+
+  tryLoad(CORE_URLS[0]);
 });
 
 function updateProcBtn(){
