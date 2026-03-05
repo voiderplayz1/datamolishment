@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Datamosh — Video Glitch Editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#1a1a1a;
+  --surface:#242424;
+  --surface2:#2e2e2e;
+  --surface3:#383838;
+  --border:#3d3d3d;
+  --border2:#4a4a4a;
+  --text:#e8e8e8;
+  --text2:#a0a0a0;
+  --text3:#666;
+  --blue:#3b82f6;
+  --blue-d:#2563eb;
+  --green:#22c55e;
+  --red:#ef4444;
+  --amber:#f59e0b;
+  --cyan:#06b6d4;
+  --r:5px;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'DM Sans',system-ui,sans-serif;font-size:13px;-webkit-font-smoothing:antialiased}
+
+/* LAYOUT */
+.app{display:grid;grid-template-rows:44px 1fr 188px;height:100vh}
+
+/* HEADER */
+.hdr{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;background:var(--surface);border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.hdr-left{display:flex;align-items:center;gap:10px}
+.app-logo{
+  display:flex;align-items:center;gap:7px;
+  font-size:14px;font-weight:600;color:var(--text);
+}
+.app-logo svg{color:var(--blue)}
+.hdr-divider{width:1px;height:20px;background:var(--border)}
+.hdr-file{font-size:12px;color:var(--text3);font-style:italic}
+.status-pill{
+  display:flex;align-items:center;gap:5px;
+  font-size:11px;font-weight:500;padding:3px 9px;
+  border-radius:20px;background:var(--surface2);color:var(--text3);
+}
+.status-pip{width:6px;height:6px;border-radius:50%;background:var(--text3);flex-shrink:0;transition:background .3s,box-shadow .3s}
+.status-pill.s-active .status-pip{background:var(--green);box-shadow:0 0 5px var(--green)}
+.status-pill.s-error  .status-pip{background:var(--red)}
+.status-pill.s-active,.status-pill.s-done{color:var(--text2)}
+
+/* MAIN */
+.main{display:grid;grid-template-columns:1fr 284px;overflow:hidden}
+
+/* VIDEO */
+.vid-panel{position:relative;background:#0d0d0d;display:flex;align-items:center;justify-content:center;border-right:1px solid var(--border);overflow:hidden}
+#player{max-width:100%;max-height:100%;display:none}
+.drop-zone{
+  position:absolute;inset:12px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  border:1.5px dashed var(--border2);border-radius:8px;cursor:pointer;
+  transition:border-color .2s,background .2s;
+}
+.drop-zone:hover,.drop-zone.drag{border-color:var(--blue);background:rgba(59,130,246,.05)}
+.drop-icon{
+  width:42px;height:42px;border-radius:10px;background:var(--surface2);
+  display:flex;align-items:center;justify-content:center;color:var(--text3);
+}
+.drop-title{font-size:13px;font-weight:500;color:var(--text2)}
+.drop-sub{font-size:11px;color:var(--text3)}
+input[type=file]{display:none}
+.vid-tc{
+  position:absolute;bottom:10px;left:10px;display:none;
+  font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;
+  background:rgba(0,0,0,.75);color:var(--green);padding:3px 8px;border-radius:4px;
+}
+.vid-info{
+  position:absolute;top:10px;right:10px;display:none;
+  font-size:11px;color:var(--text3);background:rgba(0,0,0,.75);padding:3px 8px;border-radius:4px;
+}
+.vid-close{
+  position:absolute;top:10px;left:10px;display:none;
+  font-size:11px;font-weight:500;padding:3px 9px;
+  background:rgba(0,0,0,.75);color:var(--text2);border:1px solid var(--border2);
+  border-radius:4px;cursor:pointer;transition:border-color .15s,color .15s;
+}
+.vid-close:hover{border-color:var(--red);color:var(--red)}
+
+/* SIDEBAR */
+.sidebar{display:flex;flex-direction:column;background:var(--surface);overflow-y:auto}
+.sidebar::-webkit-scrollbar{width:4px}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.sec{padding:14px 16px;border-bottom:1px solid var(--border)}
+.sec-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:11px}
+
+/* CUT POINTS */
+.pt-row{display:flex;align-items:center;gap:7px;margin-bottom:7px}
+.pt-lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;width:24px;flex-shrink:0}
+.pt-lbl.in{color:var(--cyan)}.pt-lbl.out{color:var(--amber)}
+.pt-val{
+  flex:1;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;
+  background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);
+  padding:5px 8px;color:var(--text);
+}
+.btn-set{
+  font-size:11px;font-weight:500;padding:5px 10px;
+  background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);
+  color:var(--text2);cursor:pointer;transition:all .15s;
+}
+.btn-set:hover{border-color:var(--blue);color:var(--blue);background:rgba(59,130,246,.08)}
+.cut-info{
+  font-size:11px;color:var(--text3);margin-top:6px;padding:7px 9px;
+  background:var(--surface2);border-radius:var(--r);border-left:2px solid var(--amber);display:none;
+}
+
+/* MOSH OPTIONS */
+.mopt{
+  display:flex;align-items:flex-start;gap:9px;padding:9px 10px;
+  border-radius:var(--r);cursor:pointer;border:1px solid var(--border);
+  margin-bottom:6px;transition:all .15s;
+}
+.mopt:hover{border-color:var(--border2);background:var(--surface2)}
+.mopt.sel{border-color:var(--blue);background:rgba(59,130,246,.08)}
+.mopt-radio{
+  width:14px;height:14px;min-width:14px;border-radius:50%;
+  border:1.5px solid var(--border2);margin-top:1px;position:relative;transition:border-color .15s;
+}
+.mopt.sel .mopt-radio{border-color:var(--blue)}
+.mopt.sel .mopt-radio::after{content:'';position:absolute;inset:3px;border-radius:50%;background:var(--blue)}
+.mopt-name{font-size:12px;font-weight:500;color:var(--text)}
+.mopt-desc{font-size:11px;color:var(--text3);margin-top:2px;line-height:1.45}
+
+/* EXPORT RESOLUTION */
+.res-grid{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px}
+.res-chip{
+  font-size:11px;font-weight:500;padding:4px 9px;
+  border-radius:4px;border:1px solid var(--border);
+  background:var(--surface2);color:var(--text2);cursor:pointer;transition:all .15s;
+}
+.res-chip:hover:not(.locked){border-color:var(--border2);color:var(--text)}
+.res-chip.sel{border-color:var(--blue);background:rgba(59,130,246,.12);color:var(--blue);font-weight:600}
+.res-chip.locked{opacity:.3;cursor:not-allowed}
+
+/* ENGINE BUTTONS */
+.btn-primary{
+  width:100%;padding:9px;font-size:13px;font-weight:600;
+  background:var(--blue);color:#fff;border:none;border-radius:var(--r);
+  cursor:pointer;transition:background .15s;
+}
+.btn-primary:hover:not(:disabled){background:var(--blue-d)}
+.btn-primary:disabled{background:var(--surface2);color:var(--text3);cursor:not-allowed}
+.engine-notice{
+  font-size:11px;color:var(--text2);line-height:1.55;padding:8px 10px;
+  background:var(--surface2);border-radius:var(--r);
+  border-left:2px solid var(--blue);margin-bottom:10px;
+}
+@keyframes stripe{from{background-position:0 0}to{background-position:32px 0}}
+.btn-primary.running::after{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(-45deg,rgba(255,255,255,.07) 0,rgba(255,255,255,.07) 8px,transparent 8px,transparent 16px);
+  background-size:32px 32px;animation:stripe .5s linear infinite;
+}
+.btn-primary.running{position:relative;overflow:hidden}
+
+/* PROGRESS */
+.prog-track{height:3px;background:var(--surface2);border-radius:2px;margin:8px 0;overflow:hidden}
+.prog-fill{height:100%;background:var(--blue);border-radius:2px;transition:width .35s;width:0%}
+.prog-lbl{font-size:11px;color:var(--text3)}
+
+/* DOWNLOAD */
+.dl-section{
+  margin-top:10px;padding:12px;
+  background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.22);
+  border-radius:var(--r);display:none;
+}
+.dl-head{font-size:11px;font-weight:600;color:var(--green);margin-bottom:9px;
+  display:flex;align-items:center;gap:6px}
+.dl-formats{display:flex;flex-direction:column;gap:6px}
+.dl-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.dl-res-name{font-size:12px;font-weight:500;color:var(--text)}
+.dl-res-sub{font-size:10px;color:var(--text3);margin-top:1px}
+.btn-dl{
+  font-size:11px;font-weight:600;padding:5px 12px;
+  background:var(--green);color:#000;border:none;border-radius:4px;
+  text-decoration:none;cursor:pointer;transition:opacity .15s;flex-shrink:0;
+  display:inline-block;text-align:center;
+}
+.btn-dl:hover{opacity:.85}
+.btn-dl.rendering{background:var(--surface3);color:var(--text3);cursor:not-allowed;pointer-events:none}
+
+/* LOG */
+.log-wrap{font-family:'JetBrains Mono',monospace;font-size:10px;max-height:90px;overflow-y:auto;line-height:1.65}
+.log-wrap::-webkit-scrollbar{width:3px}
+.log-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.log-ln{color:var(--text3)}
+.log-ln.ok{color:var(--green)}
+.log-ln.warn{color:var(--amber)}
+.log-ln.err{color:var(--red)}
+
+/* TIMELINE */
+.tl-area{display:flex;flex-direction:column;background:var(--bg);overflow:hidden;flex-shrink:0}
+.tl-bar{
+  display:flex;align-items:center;gap:9px;padding:0 12px;height:34px;flex-shrink:0;
+  background:var(--surface);border-bottom:1px solid var(--border);
+}
+.tl-lbl{font-size:11px;font-weight:500;color:var(--text3);white-space:nowrap}
+.zoom-range{
+  -webkit-appearance:none;width:88px;height:3px;
+  background:var(--border);outline:none;cursor:pointer;border-radius:2px;
+}
+.zoom-range::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--blue);cursor:pointer}
+.tl-sep{width:1px;height:15px;background:var(--border);flex-shrink:0}
+.tl-btn{
+  font-size:11px;font-weight:500;padding:3px 9px;
+  background:var(--surface2);border:1px solid var(--border);border-radius:4px;
+  color:var(--text2);cursor:pointer;transition:all .12s;white-space:nowrap;
+}
+.tl-btn:hover{border-color:var(--border2);color:var(--text)}
+.tl-btn.playing{border-color:var(--blue);color:var(--blue)}
+.tl-time{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);margin-left:auto;white-space:nowrap}
+
+.tl-scroll{flex:1;overflow-x:auto;overflow-y:hidden;position:relative;cursor:crosshair}
+.tl-scroll::-webkit-scrollbar{height:4px}
+.tl-scroll::-webkit-scrollbar-track{background:var(--surface)}
+.tl-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.tl-inner{position:relative}
+.tl-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text3);pointer-events:none}
+
+/* stacked canvases: filmstrip below, overlay on top */
+.tl-stack{position:relative;height:64px}
+.tl-stack canvas{position:absolute;top:0;left:0}
+#filmCvs{z-index:1}
+#overlayCvs{z-index:2;pointer-events:none}
+#rulerCvs{display:block;background:var(--surface);border-bottom:1px solid var(--border)}
+#waveCvs{display:block;background:var(--bg);border-top:1px solid var(--border)}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <header class="hdr">
+    <div class="hdr-left">
+      <div class="app-logo">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="4" width="20" height="16" rx="2"/><path d="M10 9l5 3-5 3V9z"/>
+        </svg>
+        Datamosh
+      </div>
+      <div class="hdr-divider"></div>
+      <div class="hdr-file" id="hdrFile">No file loaded</div>
+    </div>
+    <div class="status-pill" id="statusPill">
+      <span class="status-pip"></span>
+      <span id="statusTxt">Idle</span>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- VIDEO PANEL -->
+    <div class="vid-panel" id="vidPanel">
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept="video/*">
+        <div class="drop-icon">
+          <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+          </svg>
+        </div>
+        <div class="drop-title">Drop a video file here</div>
+        <div class="drop-sub">MP4, MOV, AVI, WebM, MKV — or click to browse</div>
+      </div>
+      <video id="player" playsinline></video>
+      <div class="vid-tc" id="vidTc">00:00.000</div>
+      <div class="vid-info" id="vidInfo"></div>
+      <button class="vid-close" id="vidClose">✕ Unload</button>
+    </div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+
+      <!-- CUT POINTS -->
+      <div class="sec">
+        <div class="sec-title">Cut Points</div>
+        <div class="pt-row">
+          <span class="pt-lbl in">In</span>
+          <div class="pt-val" id="inVal">00:00.000</div>
+          <button class="btn-set" id="btnSetIn">Set</button>
+        </div>
+        <div class="pt-row">
+          <span class="pt-lbl out">Out</span>
+          <div class="pt-val" id="outVal">00:00.000</div>
+          <button class="btn-set" id="btnSetOut">Set</button>
+        </div>
+        <div class="cut-info" id="cutInfo"></div>
+      </div>
+
+      <!-- MOSH INTENSITY -->
+      <div class="sec">
+        <div class="sec-title">Glitch Mode</div>
+        <div class="mopt sel" data-mode="all" id="mode-all">
+          <div class="mopt-radio"></div>
+          <div>
+            <div class="mopt-name">Full Datamosh</div>
+            <div class="mopt-desc">Strip all I-frames from Clip B. Clip A's final frame bleeds through the entire sequence.</div>
+          </div>
+        </div>
+        <div class="mopt" data-mode="keep_first" id="mode-keep_first">
+          <div class="mopt-radio"></div>
+          <div>
+            <div class="mopt-name">Single Hit</div>
+            <div class="mopt-desc">Keep only the first I-frame. One sharp glitch burst, then the video stabilises.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- EXPORT RESOLUTION -->
+      <div class="sec">
+        <div class="sec-title">Export Resolution</div>
+        <div class="res-grid" id="resGrid">
+          <!-- populated by JS once video loads -->
+          <div style="font-size:11px;color:var(--text3)">Load a video to see options</div>
+        </div>
+      </div>
+
+      <!-- ENGINE -->
+      <div class="sec" style="flex:1">
+        <div class="sec-title">Processing</div>
+        <div class="engine-notice" id="engineNotice">
+          Click <strong>Load Engine</strong> to initialise the in-browser video processor. This is a one-time ~25 MB download.
+        </div>
+        <button class="btn-primary" id="btnLoad" style="margin-bottom:8px">Load Engine</button>
+        <button class="btn-primary" id="btnProcess" disabled>Process &amp; Render</button>
+        <div class="prog-track" id="progTrack" style="display:none">
+          <div class="prog-fill" id="progFill"></div>
+        </div>
+        <div class="prog-lbl" id="progLbl"></div>
+
+        <!-- DOWNLOAD SECTION -->
+        <div class="dl-section" id="dlSection">
+          <div class="dl-head">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            Export ready
+          </div>
+          <div class="dl-formats" id="dlFormats"></div>
+        </div>
+      </div>
+
+      <!-- LOG -->
+      <div class="sec" id="logSec" style="display:none">
+        <div class="sec-title">Console</div>
+        <div class="log-wrap" id="logWrap"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- TIMELINE -->
+  <div class="tl-area">
+    <div class="tl-bar">
+      <span class="tl-lbl">Zoom</span>
+      <input type="range" class="zoom-range" id="zoomRange" min="1" max="20" step="0.5" value="1">
+      <span class="tl-lbl" id="zoomLbl" style="min-width:28px;color:var(--text2)">1×</span>
+      <div class="tl-sep"></div>
+      <button class="tl-btn" id="btnPlay">▶ Play</button>
+      <button class="tl-btn" id="btnReset">⏮</button>
+      <div class="tl-sep"></div>
+      <span class="tl-lbl" style="color:var(--border2)">Drag playhead · Grab In/Out handles</span>
+      <span class="tl-time" id="tlTime"></span>
+    </div>
+    <div class="tl-scroll" id="tlScroll">
+      <div class="tl-empty" id="tlEmpty">Load a video to begin</div>
+      <div class="tl-inner" id="tlInner" style="display:none">
+        <canvas id="rulerCvs" height="20"></canvas>
+        <div class="tl-stack" id="tlStack">
+          <canvas id="filmCvs" height="64"></canvas>
+          <canvas id="overlayCvs" height="64"></canvas>
+        </div>
+        <canvas id="waveCvs" height="22"></canvas>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- FFmpeg 0.12.x — works on Netlify with COOP/COEP headers set via _headers file -->
+<script type="module">
+import { FFmpeg } from 'https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js';
+import { fetchFile, toBlobURL } from 'https://unpkg.com/@ffmpeg/util@0.12.1/dist/esm/index.js';
+window._FFmpegClass = FFmpeg;
+window._fetchFile = fetchFile;
+window._toBlobURL = toBlobURL;
+window.dispatchEvent(new Event('ffmpeg-esm-ready'));
+</script>
+<script>
+'use strict';
+
+/* ── UTILS ── */
+function fmt(s){
+  if(s==null||!isFinite(s))return'00:00.000';
+  var m=Math.floor(s/60),r=(s%60);
+  return String(m).padStart(2,'0')+':'+r.toFixed(3).padStart(6,'0');
+}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+
+/* ── STATE ── */
+var duration=0,inPt=0,outPt=0,zoom=1,moshMode='all';
+var vidW=0,vidH=0;
+var ffReady=false,processing=false;
+var ffRef=null,fetchFileRef=null;
+var vidUrl=null,vidFile=null;
+var outputBlobs={}; // {label: Blob}
+var dragging=null;
+var pps=50; // pixels per second
+var tlW=800;
+var tlFrames={}; // key→objectURL
+var captureToken=0; // incremented to abort stale frame captures
+var filmDirty=true; // need full repaint of filmstrip canvas?
+
+/* Resolution steps */
+var RES_STEPS=[
+  {label:'320p', h:320},
+  {label:'480p', h:480},
+  {label:'720p', h:720},
+  {label:'1080p',h:1080},
+  {label:'1440p',h:1440}
+];
+var selectedRes='720p';
+var maxResH=720;
+
+/* ── DOM ── */
+var player     =document.getElementById('player');
+var dropZone   =document.getElementById('dropZone');
+var fileInput  =document.getElementById('fileInput');
+var vidClose   =document.getElementById('vidClose');
+var vidTc      =document.getElementById('vidTc');
+var vidInfo    =document.getElementById('vidInfo');
+var hdrFile    =document.getElementById('hdrFile');
+var inVal      =document.getElementById('inVal');
+var outVal     =document.getElementById('outVal');
+var cutInfo    =document.getElementById('cutInfo');
+var btnSetIn   =document.getElementById('btnSetIn');
+var btnSetOut  =document.getElementById('btnSetOut');
+var resGrid    =document.getElementById('resGrid');
+var btnLoad    =document.getElementById('btnLoad');
+var btnProcess =document.getElementById('btnProcess');
+var engineNotice=document.getElementById('engineNotice');
+var progTrack  =document.getElementById('progTrack');
+var progFill   =document.getElementById('progFill');
+var progLbl    =document.getElementById('progLbl');
+var dlSection  =document.getElementById('dlSection');
+var dlFormats  =document.getElementById('dlFormats');
+var logSec     =document.getElementById('logSec');
+var logWrap    =document.getElementById('logWrap');
+var statusPill =document.getElementById('statusPill');
+var statusTxt  =document.getElementById('statusTxt');
+var zoomRange  =document.getElementById('zoomRange');
+var zoomLbl    =document.getElementById('zoomLbl');
+var btnPlay    =document.getElementById('btnPlay');
+var btnReset   =document.getElementById('btnReset');
+var tlScroll   =document.getElementById('tlScroll');
+var tlInner    =document.getElementById('tlInner');
+var tlEmpty    =document.getElementById('tlEmpty');
+var tlTime     =document.getElementById('tlTime');
+var tlStack    =document.getElementById('tlStack');
+var rulerCvs   =document.getElementById('rulerCvs');
+var filmCvs    =document.getElementById('filmCvs');
+var overlayCvs =document.getElementById('overlayCvs');
+var waveCvs    =document.getElementById('waveCvs');
+
+/* ── STATUS ── */
+function setStatus(cls,msg){
+  statusPill.className='status-pill s-'+cls;
+  statusTxt.textContent=msg;
+}
+
+/* ── LOG ── */
+function log(msg,type){
+  type=type||'ok';
+  logSec.style.display='';
+  var d=document.createElement('div');
+  d.className='log-ln '+type;
+  d.textContent='› '+msg;
+  logWrap.appendChild(d);
+  logWrap.scrollTop=99999;
+}
+
+/* ── PROGRESS ── */
+function setProgress(p){
+  progTrack.style.display='';
+  progFill.style.width=p+'%';
+  progLbl.textContent=p+'%';
+}
+
+/* ── MARKERS UI ── */
+function updateMarkers(){
+  inVal.textContent=fmt(inPt);
+  outVal.textContent=fmt(outPt);
+  if(duration>0&&outPt>inPt){
+    cutInfo.style.display='';
+    cutInfo.textContent='Removing '+fmt(outPt-inPt)+' from the timeline';
+  }
+  drawOverlay(); // only overlay, not full filmstrip
+}
+
+/* ── RES CHIPS ── */
+function buildResChips(){
+  // cap maxResH at 1440
+  var cap=Math.min(vidH,1440);
+  maxResH=cap;
+  // available steps: those <= cap
+  var available=RES_STEPS.filter(function(r){return r.h<=cap});
+  // ensure the cap is listed even if not a standard step
+  var hasCap=available.some(function(r){return r.h===cap});
+  if(!hasCap) available.push({label:cap+'p',h:cap});
+  available.sort(function(a,b){return a.h-b.h});
+
+  // default selection: highest available
+  selectedRes=available[available.length-1].label;
+
+  resGrid.innerHTML='';
+  available.forEach(function(r){
+    var c=document.createElement('div');
+    c.className='res-chip'+(r.label===selectedRes?' sel':'');
+    c.textContent=r.label;
+    c.dataset.h=r.h;
+    c.dataset.label=r.label;
+    c.addEventListener('click',function(){
+      document.querySelectorAll('.res-chip').forEach(function(x){x.classList.remove('sel')});
+      c.classList.add('sel');
+      selectedRes=r.label;
+    });
+    resGrid.appendChild(c);
+  });
+}
+
+/* ── VIDEO LOAD ── */
+dropZone.addEventListener('click',function(){fileInput.click()});
+fileInput.addEventListener('change',function(e){loadVid(e.target.files[0])});
+dropZone.addEventListener('dragover',function(e){e.preventDefault();dropZone.classList.add('drag')});
+dropZone.addEventListener('dragleave',function(){dropZone.classList.remove('drag')});
+dropZone.addEventListener('drop',function(e){
+  e.preventDefault();dropZone.classList.remove('drag');
+  loadVid(e.dataTransfer.files[0]);
+});
+
+function loadVid(file){
+  if(!file||!file.type.startsWith('video/'))return;
+  if(vidUrl)URL.revokeObjectURL(vidUrl);
+  vidUrl=URL.createObjectURL(file);
+  vidFile=file;
+  player.src=vidUrl;
+  player.style.display='block';
+  dropZone.style.display='none';
+  vidTc.style.display='block';
+  vidInfo.style.display='block';
+  vidClose.style.display='block';
+  hdrFile.textContent=file.name;
+  outputBlobs={};
+  dlSection.style.display='none';
+  logWrap.innerHTML='';
+  logSec.style.display='none';
+  log('Loaded: '+file.name+' ('+((file.size/1024/1024).toFixed(1))+'MB)');
+  setStatus('active','Ready');
+}
+
+player.addEventListener('loadedmetadata',function(){
+  duration=player.duration;
+  vidW=player.videoWidth;
+  vidH=player.videoHeight;
+  inPt=duration*0.25;
+  outPt=duration*0.5;
+  vidInfo.textContent=vidW+'×'+vidH+'  ·  '+((vidFile?vidFile.size:0)/1024/1024).toFixed(1)+' MB';
+  buildResChips();
+  updateMarkers();
+  initTimeline();
+  log('Duration: '+fmt(duration)+'  ·  '+vidW+'×'+vidH);
+});
+
+player.addEventListener('timeupdate',function(){
+  vidTc.textContent=fmt(player.currentTime);
+  tlTime.textContent=fmt(player.currentTime)+' / '+fmt(duration);
+  drawOverlay();
+});
+player.addEventListener('play',function(){btnPlay.className='tl-btn playing';btnPlay.textContent='⏸ Pause'});
+player.addEventListener('pause',function(){btnPlay.className='tl-btn';btnPlay.textContent='▶ Play'});
+
+vidClose.addEventListener('click',function(){
+  player.pause();player.src='';player.style.display='none';
+  dropZone.style.display='';
+  vidTc.style.display='none';vidInfo.style.display='none';vidClose.style.display='none';
+  hdrFile.textContent='No file loaded';
+  duration=0;inPt=0;outPt=0;vidW=0;vidH=0;
+  tlInner.style.display='none';tlEmpty.style.display='';
+  outputBlobs={};dlSection.style.display='none';
+  setStatus('idle','Idle');
+});
+
+/* ── TRANSPORT ── */
+function togglePlay(){
+  if(!duration)return;
+  if(player.paused)player.play();else player.pause();
+}
+btnPlay.addEventListener('click',togglePlay);
+btnReset.addEventListener('click',function(){player.pause();player.currentTime=0});
+player.addEventListener('click',togglePlay);
+
+/* ── IN/OUT ── */
+btnSetIn.addEventListener('click',function(){inPt=clamp(player.currentTime,0,outPt-0.05);updateMarkers()});
+btnSetOut.addEventListener('click',function(){outPt=clamp(player.currentTime,inPt+0.05,duration);updateMarkers()});
+
+/* ── MOSH MODE ── */
+document.querySelectorAll('.mopt').forEach(function(el){
+  el.addEventListener('click',function(){
+    document.querySelectorAll('.mopt').forEach(function(e){e.classList.remove('sel')});
+    el.classList.add('sel');
+    moshMode=el.dataset.mode;
+  });
+});
+
+/* ── ZOOM ── */
+zoomRange.addEventListener('input',function(){
+  zoom=parseFloat(zoomRange.value);
+  zoomLbl.textContent=zoom.toFixed(zoom%1===0?0:1)+'×';
+  initTimeline();
+});
+
+/* ────────────────────────────────────────────
+   TIMELINE
+─────────────────────────────────────────── */
+function calcPPS(){
+  var w=tlScroll.clientWidth||800;
+  return(w*zoom)/Math.max(1,duration);
+}
+
+function initTimeline(){
+  if(!duration)return;
+  pps=calcPPS();
+  tlW=Math.max(tlScroll.clientWidth||800, Math.ceil(pps*duration)+4);
+
+  tlEmpty.style.display='none';
+  tlInner.style.display='';
+  tlStack.style.width=tlW+'px';
+
+  rulerCvs.width=tlW; rulerCvs.style.width=tlW+'px';
+  filmCvs.width=tlW;  filmCvs.style.width=tlW+'px';
+  overlayCvs.width=tlW; overlayCvs.style.width=tlW+'px';
+  waveCvs.width=tlW;  waveCvs.style.width=tlW+'px';
+  tlInner.style.width=tlW+'px';
+
+  drawRuler();
+  drawWaveBase();
+  filmDirty=true;
+  captureToken++; // abort previous capture
+  var myToken=captureToken;
+  setTimeout(function(){
+    if(captureToken===myToken) captureFrames(myToken);
+  },30);
+}
+
+/* ── RULER ── */
+function drawRuler(){
+  var ctx=rulerCvs.getContext('2d');
+  var W=tlW,H=20;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#242424';ctx.fillRect(0,0,W,H);
+  var iv=1;
+  if(pps>200)iv=0.1;
+  else if(pps>80)iv=0.5;
+  else if(pps<15)iv=5;
+  else if(pps<35)iv=2;
+  ctx.font='9px JetBrains Mono, monospace';
+  for(var t=0;t<=duration+iv;t+=iv){
+    var x=Math.round(t*pps);
+    var major=(Math.round(t/iv)%5===0)||iv>=1;
+    ctx.strokeStyle=major?'#444':'#2e2e2e';
+    ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(x,H);ctx.lineTo(x,H-(major?10:5));ctx.stroke();
+    if(major){ctx.fillStyle='#666';ctx.fillText(fmt(t),x+2,H-11);}
+  }
+}
+
+/* ── WAVEFORM (decorative) ── */
+function drawWaveBase(){
+  var ctx=waveCvs.getContext('2d');
+  var W=tlW,H=22;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#1a1a1a';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='rgba(59,130,246,0.18)';
+  for(var x=0;x<W;x+=3){
+    var h=(Math.sin(x*0.11)*0.25+Math.sin(x*0.05)*0.15+0.25+Math.random()*0.15)*H*0.85;
+    ctx.fillRect(x,H/2-h/2,2,h);
+  }
+}
+
+/* ── FILMSTRIP FRAME CAPTURE ── */
+function captureFrames(myToken){
+  if(!vidUrl||!duration)return;
+  tlFrames={};
+  filmDirty=true;
+
+  // Clear filmstrip while loading
+  var ctx=filmCvs.getContext('2d');
+  ctx.fillStyle='#0d0d0d';ctx.fillRect(0,0,filmCvs.width,64);
+
+  var iv=pps>200?0.1:pps>80?0.25:pps>30?0.5:1;
+  var tw=Math.max(20,Math.ceil(iv*pps));
+  var total=Math.ceil(duration/iv);
+  var i=0;
+  var tmpV=document.createElement('video');
+  tmpV.src=vidUrl;tmpV.muted=true;
+  var tmpC=document.createElement('canvas');
+  tmpC.width=tw;tmpC.height=64;
+  var tCtx=tmpC.getContext('2d');
+
+  tmpV.addEventListener('seeked',function(){
+    if(captureToken!==myToken)return;
+    tCtx.drawImage(tmpV,0,0,tw,64);
+    var key=(i*iv).toFixed(3);
+    (function(k){
+      tmpC.toBlob(function(blob){
+        if(captureToken!==myToken||!blob)return;
+        if(tlFrames[k])URL.revokeObjectURL(tlFrames[k]);
+        tlFrames[k]=URL.createObjectURL(blob);
+        filmDirty=true;
+        paintFilmstrip(function(){drawOverlay()});
+      },'image/jpeg',0.65);
+    })(key);
+    i++;
+    if(i<=total){
+      setTimeout(function(){
+        if(captureToken===myToken)tmpV.currentTime=i*iv;
+      },5);
+    }
+  });
+  tmpV.addEventListener('error',function(){});
+  tmpV.load();tmpV.currentTime=0;
+}
+
+/* ── PAINT FILMSTRIP (once per frame batch, expensive) ── */
+function paintFilmstrip(cb){
+  var ctx=filmCvs.getContext('2d');
+  var W=filmCvs.width,H=64;
+  ctx.fillStyle='#0d0d0d';ctx.fillRect(0,0,W,H);
+
+  var iv=pps>200?0.1:pps>80?0.25:pps>30?0.5:1;
+  var tw=Math.max(20,Math.ceil(iv*pps));
+  var keys=Object.keys(tlFrames).sort(function(a,b){return parseFloat(a)-parseFloat(b)});
+  if(keys.length===0){if(cb)cb();return}
+
+  var done=0,total=keys.length;
+  keys.forEach(function(key){
+    var t=parseFloat(key),x=Math.round(t*pps);
+    var img=new Image();
+    img.onload=function(){
+      ctx.drawImage(img,x,0,tw,H);
+      ctx.strokeStyle='rgba(0,0,0,0.35)';ctx.lineWidth=1;ctx.strokeRect(x,0,tw,H);
+      done++;if(done>=total&&cb)cb();
+    };
+    img.onerror=function(){done++;if(done>=total&&cb)cb()};
+    img.src=tlFrames[key];
+  });
+}
+
+/* ── DRAW OVERLAY (cheap, runs every frame) ── */
+function drawOverlay(){
+  if(!duration)return;
+  var ctx=overlayCvs.getContext('2d');
+  var W=overlayCvs.width,H=64;
+  ctx.clearRect(0,0,W,H); // ← THIS is the fix: fully clears old positions every frame
+
+  var inX=Math.round(inPt*pps);
+  var outX=Math.round(outPt*pps);
+  var phX=Math.round(player.currentTime*pps);
+
+  // Mosh region fill
+  ctx.fillStyle='rgba(245,158,11,0.1)';
+  ctx.fillRect(inX,0,Math.max(0,outX-inX),H);
+
+  // IN handle bar
+  ctx.fillStyle='rgba(6,182,212,0.85)';
+  ctx.fillRect(inX-1,0,2,H);
+  // IN triangle top
+  ctx.fillStyle='#06b6d4';
+  ctx.beginPath();ctx.moveTo(inX-6,0);ctx.lineTo(inX+6,0);ctx.lineTo(inX,8);ctx.fill();
+  // IN label
+  ctx.font='bold 9px DM Sans,sans-serif';ctx.fillStyle='#06b6d4';
+  ctx.fillText('IN',inX+4,13);
+
+  // OUT handle bar
+  ctx.fillStyle='rgba(245,158,11,0.85)';
+  ctx.fillRect(outX-1,0,2,H);
+  // OUT triangle top
+  ctx.fillStyle='#f59e0b';
+  ctx.beginPath();ctx.moveTo(outX-6,0);ctx.lineTo(outX+6,0);ctx.lineTo(outX,8);ctx.fill();
+  ctx.font='bold 9px DM Sans,sans-serif';ctx.fillStyle='#f59e0b';
+  ctx.fillText('OUT',outX+4,13);
+
+  // Playhead
+  ctx.fillStyle='rgba(239,68,68,0.9)';
+  ctx.fillRect(phX-1,0,2,H);
+  ctx.fillStyle='#ef4444';
+  ctx.beginPath();ctx.moveTo(phX-5,0);ctx.lineTo(phX+5,0);ctx.lineTo(phX,8);ctx.fill();
+
+  // Also overlay on wave canvas
+  var wCtx=waveCvs.getContext('2d');
+  drawWaveBase();
+  wCtx.fillStyle='rgba(245,158,11,0.1)';
+  wCtx.fillRect(inX,0,Math.max(0,outX-inX),22);
+  wCtx.fillStyle='rgba(239,68,68,0.8)';
+  wCtx.fillRect(phX-1,0,2,22);
+}
+
+/* ── TIMELINE MOUSE ── */
+function tlGetX(e){
+  var r=tlScroll.getBoundingClientRect();
+  return e.clientX-r.left+tlScroll.scrollLeft;
+}
+
+tlScroll.addEventListener('mousedown',function(e){
+  if(!duration)return;
+  var x=tlGetX(e);
+  var t=clamp(x/pps,0,duration);
+  var THRESH=10;
+  var inX=inPt*pps,outX=outPt*pps;
+  if(Math.abs(x-inX)<THRESH)       dragging='in';
+  else if(Math.abs(x-outX)<THRESH) dragging='out';
+  else{dragging='playhead';player.currentTime=t;}
+  e.preventDefault();
+});
+
+window.addEventListener('mousemove',function(e){
+  if(!dragging||!duration)return;
+  var r=tlScroll.getBoundingClientRect();
+  var x=e.clientX-r.left+tlScroll.scrollLeft;
+  var t=clamp(x/pps,0,duration);
+  if(dragging==='playhead')      player.currentTime=t;
+  else if(dragging==='in')  {inPt=clamp(t,0,outPt-0.05);updateMarkers();}
+  else if(dragging==='out') {outPt=clamp(t,inPt+0.05,duration);updateMarkers();}
+});
+window.addEventListener('mouseup',function(){dragging=null});
+
+/* ── I-FRAME STRIP ── */
+function stripIFrames(buffer,mode){
+  var b=new Uint8Array(buffer),found=0,stripped=0;
+  for(var i=0;i<b.length-5;i++){
+    if(b[i]===0x00&&b[i+1]===0x00&&b[i+2]===0x01&&b[i+3]===0xB6){
+      var vt=(b[i+4]>>6)&3;
+      if(vt===0){
+        found++;
+        if(mode==='all'||(mode==='keep_first'&&found>1)){
+          b[i+4]=(b[i+4]&0x3F)|0x40; stripped++;
+        }
+      }
+    }
+  }
+  log('I-frames found: '+found+', stripped: '+stripped);
+  return b.buffer;
+}
+
+/* ── LOAD FFMPEG ENGINE ── */
+btnLoad.addEventListener('click',function(){
+  btnLoad.disabled=true;
+  btnLoad.textContent='Loading…';
+  setStatus('active','Loading engine');
+  log('Loading ffmpeg.wasm engine…','warn');
+
+  function doLoad(){
+    var FFmpegClass=window._FFmpegClass;
+    var fetchFileFn=window._fetchFile;
+    var toBlobURL=window._toBlobURL;
+    if(!FFmpegClass||!fetchFileFn||!toBlobURL){
+      log('FFmpeg module not ready — reload the page.','err');
+      setStatus('error','Load failed');
+      btnLoad.disabled=false; btnLoad.textContent='Retry'; return;
+    }
+    var ff=new FFmpegClass();
+    ff.on('log',function(e){
+      if(e.message&&e.message.indexOf('frame=')!==-1) log(e.message.slice(0,80));
+    });
+    ff.on('progress',function(e){
+      setProgress(Math.round((e.progress||0)*100));
+    });
+    var base='https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm/';
+    Promise.all([
+      toBlobURL(base+'ffmpeg-core.js',   'text/javascript'),
+      toBlobURL(base+'ffmpeg-core.wasm', 'application/wasm'),
+    ]).then(function(urls){
+      return ff.load({ coreURL:urls[0], wasmURL:urls[1] });
+    }).then(function(){
+      ffRef=ff;
+      fetchFileRef=fetchFileFn;
+      ffReady=true;
+      btnLoad.style.display='none';
+      engineNotice.style.display='none';
+      setStatus('active','Engine ready');
+      log('Engine loaded ✓','ok');
+      updateProcBtn();
+    }).catch(function(e){
+      log('Engine load failed: '+e.message,'err');
+      setStatus('error','Load failed');
+      btnLoad.disabled=false; btnLoad.textContent='Retry';
+    });
+  }
+
+  if(window._FFmpegClass){ doLoad(); }
+  else{ window.addEventListener('ffmpeg-esm-ready',doLoad,{once:true}); }
+});
+
+function updateProcBtn(){
+  btnProcess.disabled=!(ffReady&&duration>0&&outPt>inPt&&!processing);
+}
+
+/* ── PROCESS ── */
+btnProcess.addEventListener('click',runProcess);
+
+async function runProcess(){
+  if(!ffRef||!vidFile||processing)return;
+  processing=true;
+  btnProcess.classList.add('running');
+  btnProcess.disabled=true;
+  btnProcess.textContent='Processing…';
+  dlSection.style.display='none';
+  outputBlobs={};
+  setProgress(0);
+  setStatus('active','Processing');
+  logWrap.innerHTML='';
+
+  var ff=ffRef;
+  var fetchFile=fetchFileRef;
+
+  // Helper: 0.12.x uses ff.writeFile / ff.readFile / ff.exec (not ff.FS / ff.run)
+  async function write(name, data){ await ff.writeFile(name, data); }
+  async function read(name){ return await ff.readFile(name); }
+  async function exec(){ var args=Array.prototype.slice.call(arguments); await ff.exec(args); }
+  async function execA(args){ await ff.exec(args); }
+  function del(name){ try{ ff.deleteFile(name); }catch(e){} }
+
+  try{
+    log('Writing input file…','warn');
+    await write('input', await fetchFile(vidFile));
+
+    // Clip A
+    log('[1/5] Encoding Clip A (0 → '+fmt(inPt)+')…','warn');
+    await ff.exec(['-i','input','-t',inPt.toFixed(3),
+      '-c:v','mpeg4','-bf','0','-q:v','3','-an','clip_a.avi']);
+    setProgress(18); log('Clip A done ✓','ok');
+
+    // Clip B
+    log('[2/5] Encoding Clip B ('+fmt(outPt)+' → end)…','warn');
+    await ff.exec(['-i','input','-ss',outPt.toFixed(3),
+      '-c:v','mpeg4','-bf','0','-g','9999','-keyint_min','9999','-q:v','3','-an','clip_b.avi']);
+    setProgress(36); log('Clip B done ✓','ok');
+
+    // Strip I-frames
+    log('[3/5] Stripping I-frames ('+moshMode+')…','warn');
+    var rawB = await read('clip_b.avi');
+    var moshed = stripIFrames(rawB.buffer, moshMode);
+    await write('clip_b_moshed.avi', new Uint8Array(moshed));
+    setProgress(50); log('I-frames stripped ✓','ok');
+
+    // Audio
+    log('[4/5] Processing audio…','warn');
+    var hasAudio=true;
+    try{
+      await ff.exec(['-i','input','-t',inPt.toFixed(3),'-vn','-c:a','copy','audio_a.aac']);
+      await ff.exec(['-i','input','-ss',outPt.toFixed(3),'-vn','-c:a','copy','audio_b.aac']);
+      var concatTxt=new TextEncoder().encode("file 'audio_a.aac'\nfile 'audio_b.aac'");
+      await write('audio_concat.txt', concatTxt);
+      await ff.exec(['-f','concat','-safe','0','-i','audio_concat.txt','-c:a','aac','audio_merged.aac']);
+      log('Audio merged ✓','ok');
+    }catch(e){ hasAudio=false; log('No audio track — video only','warn'); }
+    setProgress(62);
+
+    // Concat video
+    log('[5/5] Concatenating clips…','warn');
+    var vidConcatTxt=new TextEncoder().encode("file 'clip_a.avi'\nfile 'clip_b_moshed.avi'");
+    await write('video_concat.txt', vidConcatTxt);
+    await ff.exec(['-f','concat','-safe','0','-i','video_concat.txt','-c','copy','merged_video.avi']);
+    setProgress(72);
+
+    // Build available export steps
+    var availSteps=RES_STEPS.filter(function(r){return r.h<=Math.min(vidH,1440)});
+    var capH=Math.min(vidH,1440);
+    if(!availSteps.some(function(r){return r.h===capH}))
+      availSteps.push({label:capH+'p',h:capH});
+    availSteps.sort(function(a,b){return a.h-b.h});
+
+    log('Encoding export variants…','warn');
+    var stepCount=availSteps.length, si=0;
+
+    for(var ri=0;ri<availSteps.length;ri++){
+      var step=availSteps[ri];
+      var outName='out_'+step.h+'.webm';
+      var args=['-i','merged_video.avi'];
+      if(hasAudio) args=args.concat(['-i','audio_merged.aac','-map','0:v','-map','1:a','-c:a','libvorbis','-q:a','4']);
+      args=args.concat(['-c:v','libvpx','-crf','18','-b:v','0','-vf','scale=-2:'+step.h,outName]);
+      await ff.exec(args);
+      var resultData=await read(outName);
+      outputBlobs[step.label]=new Blob([resultData.buffer],{type:'video/webm'});
+      del(outName); si++;
+      setProgress(72+Math.round((si/stepCount)*26));
+      log('Encoded '+step.label+' ✓','ok');
+    }
+
+    setProgress(100);
+    setStatus('active','Done');
+    log('All variants ready ✓','ok');
+    buildDownloadUI(availSteps);
+
+    // Cleanup
+    ['input','clip_a.avi','clip_b.avi','clip_b_moshed.avi',
+     'audio_a.aac','audio_b.aac','audio_concat.txt','audio_merged.aac',
+     'video_concat.txt','merged_video.avi'].forEach(del);
+
+  }catch(e){
+    log('Error: '+e.message,'err');
+    setStatus('error','Error');
+  }
+
+  processing=false;
+  btnProcess.classList.remove('running');
+  btnProcess.textContent='Process & Render';
+  updateProcBtn();
+}
+
+/* ── BUILD DOWNLOAD UI ── */
+function buildDownloadUI(steps){
+  dlFormats.innerHTML='';
+  steps.slice().reverse().forEach(function(step){
+    var blob=outputBlobs[step.label];
+    if(!blob)return;
+    var url=URL.createObjectURL(blob);
+    var row=document.createElement('div');
+    row.className='dl-row';
+    var left=document.createElement('div');
+    var name=document.createElement('div');
+    name.className='dl-res-name';
+    name.textContent=step.label;
+    var sub=document.createElement('div');
+    sub.className='dl-res-sub';
+    sub.textContent=(blob.size/1024/1024).toFixed(1)+' MB · WebM';
+    left.appendChild(name);left.appendChild(sub);
+    var a=document.createElement('a');
+    a.href=url;a.download='datamosh_'+step.label+'.webm';
+    a.className='btn-dl';a.textContent='Download';
+    row.appendChild(left);row.appendChild(a);
+    dlFormats.appendChild(row);
+  });
+  dlSection.style.display='';
+}
+
+/* ── INIT ── */
+setStatus('idle','Idle');
+updateProcBtn();
+</script>
+</body>
+</html>
